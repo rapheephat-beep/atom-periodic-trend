@@ -1,0 +1,6 @@
+# เครื่องมือ/ไฟล์สำหรับพัฒนา ไม่ต้องขึ้น GitHub
+.claude/
+server.js
+test_engine.js
+.DS_Store
+node_modules/
