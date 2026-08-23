@@ -1,787 +1,1849 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>แบบจำลองอะตอม & แนวโน้มในตารางธาตุ — เคมี ม.4</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>แบบจำลองอะตอมและไอออน</title>
 <style>
-  :root{
-    --bg:#0f1729; --panel:#172238; --panel2:#1f2d49; --line:#2c3b5c;
-    --ink:#eaf0fb; --muted:#9fb0cf; --accent:#4fc3f7; --accent2:#ffb74d;
-    --pos:#ff6b6b; --neg:#5c7cfa; --good:#51cf66; --warn:#ffd43b;
-    --nucleus:#ff7a59; --shellc:#3a4d77;
-    --s-block:#4a6fb5; --p-block:#3f9e7e; --d-block:#9a6fc0; --noble:#c06f9a;
+/* ─────────── tokens ─────────── */
+:root{
+  --paper:#F3F6F9;
+  --card:#FFFFFF;
+  --card-2:#EAEFF4;
+  --ink:#121A24;
+  --ink-2:#42525F;
+  --ink-3:#7A8894;
+  --line:#D7DFE7;
+  --line-2:#C2CDD8;
+  --hot:#C94A28;          /* นิวเคลียส / ประจุบวก / พลังงาน */
+  --hot-soft:#FBEAE4;
+  --cold:#0B7E94;         /* อิเล็กตรอน / ประจุลบ */
+  --cold-soft:#DFF1F5;
+  --chip:#1B2735;         /* ธาตุที่เลือก */
+  --chip-ink:#F3F6F9;
+  --ok:#2F7D5B;
+  --shadow:0 1px 2px rgba(18,26,36,.06),0 8px 24px -12px rgba(18,26,36,.18);
+  /* จออะตอม — คงสีเดียวทั้งสองธีม (เป็นจอเครื่องมือ) */
+  --scope:#0A1018;
+  --scope-2:#132132;
+  --scope-line:#2A3D52;
+  --scope-ink:#8FA6BC;
+  --e-glow:#6FE3FF;
+  --n-glow:#F07A4E;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E141B;
+    --card:#161F29;
+    --card-2:#1D2833;
+    --ink:#E6EDF3;
+    --ink-2:#A9B8C6;
+    --ink-3:#75868F;
+    --line:#26333F;
+    --line-2:#34434F;
+    --hot:#F08560;
+    --hot-soft:#3A2117;
+    --cold:#57C7DE;
+    --cold-soft:#0F2C33;
+    --chip:#DDE6EE;
+    --chip-ink:#0E141B;
+    --ok:#6CC49A;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.7);
   }
-  *{box-sizing:border-box}
-  body{
-    margin:0; font-family:"Sarabun","Segoe UI",system-ui,-apple-system,sans-serif;
-    background:linear-gradient(160deg,#0f1729,#131d33); color:var(--ink);
-    line-height:1.45; padding-bottom:40px;
-  }
-  header{
-    padding:16px 20px; background:rgba(15,23,41,.85); backdrop-filter:blur(6px);
-    border-bottom:1px solid var(--line); position:sticky; top:0; z-index:50;
-  }
-  header h1{margin:0; font-size:20px; letter-spacing:.2px}
-  header .sub{color:var(--muted); font-size:13px; margin-top:2px}
-  .tabs{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px}
-  .tab{
-    background:var(--panel); border:1px solid var(--line); color:var(--muted);
-    padding:8px 14px; border-radius:10px 10px 0 0; cursor:pointer; font-size:14px;
-    font-weight:600; transition:.15s; user-select:none;
-  }
-  .tab:hover{color:var(--ink); border-color:var(--accent)}
-  .tab.active{background:var(--accent); color:#06243a; border-color:var(--accent)}
-  main{max-width:1180px; margin:0 auto; padding:18px 16px}
-  .activity-desc{
-    background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--accent);
-    padding:12px 16px; border-radius:10px; margin-bottom:16px; font-size:14px; color:var(--muted);
-  }
-  .activity-desc b{color:var(--ink)}
-  .stage{display:grid; gap:16px}
-  .two-col{grid-template-columns:1fr 1fr}
-  @media(max-width:820px){ .two-col{grid-template-columns:1fr} }
-  .card{
-    background:var(--panel); border:1px solid var(--line); border-radius:14px;
-    padding:14px; display:flex; flex-direction:column; gap:10px;
-  }
-  .card h3{margin:0; font-size:16px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
-  .pill{
-    font-size:12px; font-weight:700; padding:2px 9px; border-radius:999px;
-    background:var(--panel2); border:1px solid var(--line); color:var(--muted);
-  }
-  .btn{
-    background:var(--panel2); border:1px solid var(--line); color:var(--ink);
-    padding:8px 12px; border-radius:9px; cursor:pointer; font-size:14px; font-weight:600;
-    font-family:inherit; transition:.12s;
-  }
-  .btn:hover:not(:disabled){border-color:var(--accent); background:#243760}
-  .btn:disabled{opacity:.4; cursor:not-allowed}
-  .btn.primary{background:var(--accent); color:#06243a; border-color:var(--accent)}
-  .btn.pos{background:#3a1f2a; border-color:var(--pos); color:#ffd0d0}
-  .btn.neg{background:#1f2742; border-color:var(--neg); color:#cdd8ff}
-  .btn.sm{padding:5px 9px; font-size:13px}
-  .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-  .atomwrap{display:flex; flex-direction:column; align-items:center; gap:6px}
-  svg.atom{width:100%; max-width:360px; height:auto; touch-action:none}
-  .datatable{width:100%; border-collapse:collapse; font-size:13.5px}
-  .datatable td{padding:5px 8px; border-bottom:1px solid var(--line)}
-  .datatable td:first-child{color:var(--muted)}
-  .datatable td:last-child{text-align:right; font-weight:600; font-variant-numeric:tabular-nums}
-  .shelllist{display:flex; flex-direction:column; gap:4px; font-size:13px}
-  .shellrow{display:flex; justify-content:space-between; gap:10px; padding:3px 8px;
-    background:var(--panel2); border-radius:7px}
-  .shellrow.valence{outline:1.5px solid var(--accent2)}
-  .badge-charge{font-weight:800; font-size:15px}
-  .approx{color:var(--warn); font-size:12px}
-  .note{font-size:12px; color:var(--muted)}
-  .cmp{
-    text-align:center; font-weight:700; padding:10px; border-radius:10px;
-    background:var(--panel2); border:1px solid var(--line); font-size:14px;
-  }
-  .ielog{display:flex; flex-direction:column; gap:3px; max-height:280px; overflow:auto}
-  .ielog .ie{display:flex; justify-content:space-between; padding:5px 9px; border-radius:7px;
-    background:var(--panel2); font-size:13.5px; font-variant-numeric:tabular-nums}
-  .ielog .ie.jump{background:#3a2a14; border:1px solid var(--accent2); color:#ffe0b0}
-  .ielog .ie .lbl{color:var(--muted)}
-  /* periodic table modal */
-  .modal-bg{
-    position:fixed; inset:0; background:rgba(5,9,18,.78); z-index:100;
-    display:none; align-items:flex-start; justify-content:center; padding:24px 10px; overflow:auto;
-  }
-  .modal-bg.show{display:flex}
-  .modal{
-    background:var(--panel); border:1px solid var(--line); border-radius:14px;
-    padding:16px; max-width:980px; width:100%;
-  }
-  .modal h3{margin:0 0 4px}
-  .ptable{
-    display:grid; grid-template-columns:repeat(18, 1fr); gap:3px; margin-top:12px;
-  }
-  .pcell{
-    aspect-ratio:1/1; border-radius:5px; border:1px solid transparent; cursor:pointer;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    font-size:11px; font-weight:700; color:#fff; transition:.1s; padding:1px; min-height:34px;
-  }
-  .pcell .z{font-size:8px; font-weight:500; opacity:.85; line-height:1}
-  .pcell:hover{transform:scale(1.12); border-color:#fff; z-index:2; box-shadow:0 2px 10px rgba(0,0,0,.5)}
-  .pcell.disabled{opacity:.18; cursor:not-allowed; pointer-events:none}
-  .pcell.empty{background:transparent; border:none; cursor:default; pointer-events:none}
-  .legend{display:flex; gap:14px; flex-wrap:wrap; margin-top:12px; font-size:12px; color:var(--muted)}
-  .legend span{display:inline-flex; align-items:center; gap:5px}
-  .legend i{width:12px; height:12px; border-radius:3px; display:inline-block}
-  .close-x{float:right; cursor:pointer; font-size:22px; color:var(--muted); line-height:1}
-  .close-x:hover{color:var(--ink)}
-  .hint{font-size:12.5px; color:var(--muted); margin-top:4px}
-  .ghost-key{display:inline-block; width:14px; border-top:2px dashed #8aa0c8; margin-right:4px; vertical-align:middle}
-  .seg{display:inline-flex; border:1px solid var(--line); border-radius:9px; overflow:hidden}
-  .seg button{background:var(--panel2); border:none; color:var(--muted); padding:7px 12px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:600}
-  .seg button.on{background:var(--accent); color:#06243a}
-  kbd{background:var(--panel2); border:1px solid var(--line); border-radius:5px; padding:1px 6px; font-size:12px}
-</style>
-</head>
-<body>
-<header>
-  <h1>⚛️ แบบจำลองอะตอม &amp; แนวโน้มในตารางธาตุ</h1>
-  <div class="sub">สื่อจำลองแบบโต้ตอบ — เคมี ม.4 · ระดับพลังงานหลัก · รัศมีอะตอม/ไอออน · พลังงานไอออไนเซชัน (IE) · สัมพรรคภาพอิเล็กตรอน (EA)</div>
-  <div class="tabs" id="tabs"></div>
-</header>
-<main id="app"></main>
+}
+:root[data-theme="dark"]{
+  --paper:#0E141B; --card:#161F29; --card-2:#1D2833;
+  --ink:#E6EDF3; --ink-2:#A9B8C6; --ink-3:#75868F;
+  --line:#26333F; --line-2:#34434F;
+  --hot:#F08560; --hot-soft:#3A2117;
+  --cold:#57C7DE; --cold-soft:#0F2C33;
+  --chip:#DDE6EE; --chip-ink:#0E141B; --ok:#6CC49A;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.7);
+}
 
-<!-- Periodic table picker modal -->
-<div class="modal-bg" id="ptModal">
-  <div class="modal">
-    <span class="close-x" onclick="closePicker()">✕</span>
-    <h3 id="ptTitle">เลือกธาตุจากตารางธาตุ</h3>
-    <div class="note">คาบ 1–7 · ไม่รวมธาตุกลุ่ม f (แลนทาไนด์ Z=58–71 และ แอกทิไนด์ Z=90–103)</div>
-    <div class="ptable" id="ptable"></div>
-    <div class="legend">
-      <span><i style="background:var(--s-block)"></i> หมู่ s (1–2)</span>
-      <span><i style="background:var(--d-block)"></i> หมู่ d (3–12)</span>
-      <span><i style="background:var(--p-block)"></i> หมู่ p (13–17)</span>
-      <span><i style="background:var(--noble)"></i> แก๊สมีตระกูล (18)</span>
-    </div>
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Noto Sans Thai","IBM Plex Sans Thai",-apple-system,BlinkMacSystemFont,"Segoe UI",Thonburi,"Leelawadee UI",system-ui,sans-serif;
+  font-size:15px;
+  line-height:1.6;
+}
+.num{font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 18px 72px}
+
+/* ─────────── header ─────────── */
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px;margin-bottom:16px}
+h1{
+  font-size:clamp(20px,3.2vw,27px);font-weight:800;margin:0;
+  letter-spacing:-.02em;text-wrap:balance;
+}
+.sub{color:var(--ink-3);font-size:13px}
+.sub b{color:var(--ink-2);font-weight:600}
+
+/* ─────────── ประตูระบุตัวตน ─────────── */
+.gate{
+  position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:20px;
+  background:color-mix(in srgb,var(--paper) 82%,transparent);backdrop-filter:blur(6px);
+}
+.gate .box{
+  background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+  padding:22px 24px;max-width:430px;width:100%;
+}
+.gate h2{font-size:18px;font-weight:800;margin:0 0 4px;letter-spacing:-.02em}
+.gate p{font-size:13px;color:var(--ink-2);margin:0 0 16px;line-height:1.6}
+.gate label{display:block;font-size:12px;color:var(--ink-3);margin:11px 0 4px;font-weight:600}
+.gate input,.gate select{
+  width:100%;box-sizing:border-box;font:inherit;font-size:14px;padding:9px 11px;border-radius:8px;
+  border:1px solid var(--line-2);background:var(--paper);color:var(--ink);
+}
+.gate input:focus,.gate select:focus{outline:2px solid var(--cold);outline-offset:-1px}
+.gate .go{
+  width:100%;margin-top:16px;font:inherit;font-size:14px;font-weight:700;padding:10px;border-radius:9px;
+  border:0;background:var(--chip);color:var(--chip-ink);cursor:pointer;
+}
+.gate .go:disabled{opacity:.4;cursor:not-allowed}
+.gate .alt{margin-top:12px;font-size:12px;color:var(--ink-3);text-align:center}
+.gate .alt button{background:none;border:0;color:var(--cold);cursor:pointer;font:inherit;font-size:12px;text-decoration:underline;padding:0}
+.gate .err{margin-top:9px;font-size:12.5px;color:var(--hot)}
+
+/* ─────────── แถบผู้ใช้ + ส่งงาน ─────────── */
+.who{
+  display:flex;flex-wrap:wrap;align-items:center;gap:9px;font-size:12.5px;color:var(--ink-2);
+  background:var(--card);border:1px solid var(--line);border-radius:9px;padding:8px 13px;margin-bottom:12px;
+}
+.who b{color:var(--ink);font-weight:700}
+.who .sp{flex:1}
+.who button{
+  font:inherit;font-size:12.5px;font-weight:600;padding:5px 11px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink);
+}
+.who button:hover{background:var(--card-2)}
+.who button.main{background:var(--chip);border-color:var(--chip);color:var(--chip-ink)}
+.who .prog{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--ink-3)}
+.savedmsg{font-size:12px;color:var(--ok);font-weight:600}
+
+/* ─────────── ใบบันทึกผลงานสำหรับพิมพ์ ─────────── */
+#sheet{display:none}
+@media print{
+  body{background:#fff;color:#000}
+  .wrap>*{display:none!important}
+  #sheet{display:block!important}
+  #sheet .pt-task{page-break-inside:avoid;margin-bottom:16px}
+  #sheet h1{font-size:19px;margin:0 0 3px}
+  #sheet .meta{font-size:12px;color:#444;margin-bottom:14px;border-bottom:1px solid #bbb;padding-bottom:9px}
+  #sheet h2{font-size:14px;margin:0 0 6px;border-left:3px solid #888;padding-left:8px}
+  #sheet .row{font-size:11.5px;color:#333;margin-bottom:5px}
+  #sheet .dr{border:1px solid #ccc;border-radius:6px;padding:7px 9px;margin:5px 0;font-size:11.5px;line-height:1.6}
+  #sheet .dr b{font-size:11px}
+  #sheet table{border-collapse:collapse;font-size:11px;margin:5px 0}
+  #sheet td,#sheet th{border:1px solid #bbb;padding:3px 7px;text-align:center}
+}
+.hostbar{
+  display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2);
+  background:var(--card);border:1px solid var(--line);border-radius:9px;
+  padding:8px 13px;margin-bottom:12px;
+}
+.hostbar .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:0 0 auto}
+.hostbar .dot.wait{background:var(--ink-3)}
+.hostbar b{color:var(--ink);font-weight:700}
+/* ─────────── mode rail ─────────── */
+.modes{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:thin}
+.mode{
+  flex:0 0 auto;display:flex;align-items:center;gap:9px;
+  background:var(--card);border:1px solid var(--line);border-radius:9px;
+  padding:8px 13px 8px 9px;cursor:pointer;color:var(--ink-2);
+  font:inherit;font-size:13.5px;text-align:left;transition:background .13s,border-color .13s,color .13s;
+}
+.mode:hover{border-color:var(--line-2)}
+.mode .n{
+  font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;
+  width:21px;height:21px;flex:0 0 auto;display:grid;place-items:center;border-radius:5px;
+  background:var(--card-2);color:var(--ink-3);
+}
+.mode[aria-pressed="true"]{background:var(--chip);border-color:var(--chip);color:var(--chip-ink)}
+.mode[aria-pressed="true"] .n{background:rgba(127,127,127,.28);color:var(--chip-ink)}
+
+/* ─────────── panels ─────────── */
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+.brief{padding:13px 16px;margin-bottom:14px;border-left:3px solid var(--hot);display:flex;gap:12px;align-items:flex-start}
+.brief .bt{font-weight:700;font-size:14px;margin:0 0 2px}
+.brief p{margin:0;font-size:13.5px;color:var(--ink-2)}
+
+/* ─────────── periodic table ─────────── */
+.ptwrap{padding:14px 16px 16px;margin-bottom:14px;overflow-x:auto}
+.pthead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
+.pthead h2{font-size:13px;font-weight:700;margin:0;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-2)}
+.slotpick{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--ink-3)}
+.sbtn{
+  font:inherit;font-size:12.5px;padding:4px 11px;border-radius:7px;cursor:pointer;
+  background:var(--card-2);border:1px solid var(--line);color:var(--ink-2);
+}
+.sbtn[aria-pressed="true"]{background:var(--chip);border-color:var(--chip);color:var(--chip-ink);font-weight:600}
+table.pt{border-collapse:separate;border-spacing:2px;margin:0 auto;min-width:620px}
+table.pt td{padding:0;width:34px;height:31px}
+.el{
+  width:100%;height:100%;border:1px solid transparent;border-radius:5px;cursor:pointer;
+  font:inherit;font-size:12.5px;font-weight:600;color:var(--ink);
+  display:grid;place-items:center;padding:0;transition:transform .1s,box-shadow .1s;
+  position:relative;
+}
+.el:hover{transform:translateY(-1.5px);box-shadow:0 3px 8px -2px rgba(0,0,0,.28);z-index:2}
+.el.s1{background:#DCEFE9}   .el.s2{background:#CFE8E0}
+.el.d{background:#E4EBF1}    .el.p{background:#E9EEDF}
+.el.metalloid{background:#E7E6D6} .el.halogen{background:#DDEAD4}
+.el.noble{background:#E2E4EE}
+:root[data-theme="dark"] .el.s1,:root[data-theme="dark"] .el.s2{background:#1D3A35}
+:root[data-theme="dark"] .el.d{background:#23303C} :root[data-theme="dark"] .el.p{background:#2A3226}
+:root[data-theme="dark"] .el.metalloid{background:#33322A} :root[data-theme="dark"] .el.halogen{background:#233523}
+:root[data-theme="dark"] .el.noble{background:#282B38}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .el.s1,:root:not([data-theme="light"]) .el.s2{background:#1D3A35}
+  :root:not([data-theme="light"]) .el.d{background:#23303C}
+  :root:not([data-theme="light"]) .el.p{background:#2A3226}
+  :root:not([data-theme="light"]) .el.metalloid{background:#33322A}
+  :root:not([data-theme="light"]) .el.halogen{background:#233523}
+  :root:not([data-theme="light"]) .el.noble{background:#282B38}
+}
+.el[data-sel]{background:var(--chip);color:var(--chip-ink);border-color:var(--chip)}
+.el[data-sel]::after{
+  content:attr(data-sel);position:absolute;top:-4px;right:-4px;
+  width:14px;height:14px;border-radius:50%;background:var(--hot);color:#fff;
+  font-family:ui-monospace,Menlo,monospace;font-size:9px;font-weight:700;
+  display:grid;place-items:center;line-height:1;border:1.5px solid var(--card);
+}
+.el:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
+.fgap{
+  display:grid;place-items:center;font-size:12px;color:var(--ink-3);
+  height:100%;border:1px dashed var(--line-2);border-radius:5px;letter-spacing:.06em;
+}
+.ptlegend{display:flex;flex-wrap:wrap;gap:5px 13px;margin-top:11px;font-size:11.5px;color:var(--ink-3)}
+.ptlegend span{display:flex;align-items:center;gap:5px}
+.ptlegend i{width:10px;height:10px;border-radius:3px;display:block}
+
+/* ─────────── แถบอนุกรมสปีชีส์ ─────────── */
+.seriesbox{padding:14px 16px 16px;margin-bottom:14px}
+.serieshead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:11px}
+.serieshead h2{font-size:13px;font-weight:700;margin:0;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-2)}
+.series{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;align-items:stretch}
+.sp{
+  flex:1 1 0;min-width:132px;display:flex;flex-direction:column;gap:0;
+  border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card-2);
+  position:relative;
+}
+.sp.dead{opacity:.62}
+.sp .cap{
+  display:flex;justify-content:space-between;align-items:center;gap:6px;padding:7px 9px 6px;
+  font-size:17px;font-weight:800;letter-spacing:-.02em;line-height:1.1;
+}
+.sp .cap .ord{font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;color:var(--ink-3);letter-spacing:0;margin-left:6px}
+.sp .x{
+  border:0;background:transparent;color:var(--ink-3);cursor:pointer;font:inherit;font-size:15px;
+  line-height:1;padding:0 2px;border-radius:4px;
+}
+.sp .x:hover{color:var(--hot);background:var(--hot-soft)}
+.sp .scope{border-top:1px solid var(--line)}
+/* การจัดเรียงอิเล็กตรอน + ประจุนิวเคลียส ใต้ภาพ อ่านง่ายกว่าป้ายเล็กๆ ในวง */
+.sp .spcfg{
+  margin-top:auto;                     /* ธาตุที่มีหลายวงเขียนสองบรรทัด — ดันให้ชิดล่างเพื่อให้ทุกการ์ดตรงแนวกัน */
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 5px;padding:6px 9px 7px;
+  border-top:1px solid var(--line);font-family:ui-monospace,Menlo,monospace;
+  font-size:10.5px;color:var(--ink-3);letter-spacing:-.01em;
+}
+.sp .spcfg em{font-style:normal;font-weight:700;color:var(--ink);margin-left:1px}
+.sp .spcfg .pz{margin-left:auto;font-weight:700;color:var(--hot)}
+/* ข้อมูลสมบัติของธาตุ/ไอออนบนการ์ด — นักเรียนอ่านค่าจากตรงนี้ไปกรอกตารางหลักฐาน */
+.sp .spdata{display:grid;gap:2px;padding:7px 9px 8px;border-top:1px solid var(--line);background:var(--card)}
+.sp .spdata div{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:10.5px}
+.sp .spdata span{color:var(--ink-3)}
+.sp .spdata b{
+  font-family:ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;
+  font-size:11.5px;font-weight:700;white-space:nowrap;
+}
+.sp .spdata b.big{font-size:13px;color:var(--cold)}
+.sp .flag{
+  position:absolute;left:6px;right:6px;bottom:6px;text-align:center;font-size:10.5px;
+  background:var(--hot);color:#fff;border-radius:5px;padding:2px 4px;font-weight:600;
+}
+.seriesctl{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px;align-items:center}
+.hintline{font-size:12.5px;color:var(--ink-3);margin-top:9px}
+
+.scope{position:relative;background:radial-gradient(ellipse at 50% 42%,var(--scope-2) 0%,var(--scope) 72%);aspect-ratio:1/1}
+.scope svg{display:block;width:100%;height:100%;touch-action:none}
+.scale-note{
+  position:absolute;left:10px;bottom:8px;font-size:10.5px;color:var(--scope-ink);
+  font-family:ui-monospace,Menlo,monospace;letter-spacing:.03em;pointer-events:none;
+}
+.hint{
+  position:absolute;top:9px;left:0;right:0;text-align:center;font-size:11.5px;
+  color:var(--scope-ink);pointer-events:none;transition:opacity .25s;
+}
+.eshell{fill:none;stroke:var(--scope-line);stroke-width:1}
+.eghost{fill:none;stroke:#5C7996;stroke-width:1;stroke-dasharray:3 4;opacity:.85}
+.ecomp{fill:none;stroke:#6B7F94;stroke-width:1;stroke-dasharray:1 5;stroke-linecap:round;opacity:.9}
+.edot{cursor:grab;transition:opacity .15s}
+.edot:hover circle.core{r:5.2}
+.edot.locked{cursor:default}
+.flyout{pointer-events:none}
+
+/* ─────────── CER: ข้อกล่าวอ้าง / หลักฐาน / เหตุผล ─────────── */
+.cer{padding:15px 17px 17px;margin-bottom:14px}
+.cer h2{
+  font-size:13px;font-weight:700;margin:0 0 12px;letter-spacing:.03em;
+  text-transform:uppercase;color:var(--ink-2);display:flex;align-items:center;gap:8px;
+}
+.cer h2 .rn{
+  font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:700;text-transform:none;
+  background:var(--card-2);color:var(--ink-3);border-radius:4px;padding:2px 6px;letter-spacing:0;
+}
+.claims{display:grid;gap:8px}
+.claim{
+  display:flex;flex-wrap:wrap;align-items:center;gap:7px;font-size:14px;
+  padding:8px 11px;border-radius:8px;background:var(--card-2);
+}
+.claim select{
+  font:inherit;font-size:13.5px;font-weight:700;padding:3px 8px;border-radius:6px;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink);cursor:pointer;min-width:88px;
+}
+.claim select:focus-visible{outline:2px solid var(--hot);outline-offset:1px}
+.mark{font-size:12.5px;font-weight:700;margin-left:auto;white-space:nowrap;padding:2px 9px;border-radius:20px}
+.mark.ok{background:var(--cold-soft);color:var(--ok)}
+.mark.no{background:var(--hot-soft);color:var(--hot)}
+.mark.na{background:transparent;color:var(--ink-3);font-weight:500}
+.score{font-size:12.5px;color:var(--ink-3);margin-top:10px}
+.score b{color:var(--ink);font-weight:700}
+
+.evwrap{overflow-x:auto}
+table.ev{border-collapse:collapse;width:100%;min-width:520px;font-size:13px}
+table.ev th,table.ev td{border:1px solid var(--line);padding:7px 10px;text-align:center}
+table.ev thead th{
+  background:var(--card-2);font-weight:700;font-size:15px;letter-spacing:-.01em;
+}
+table.ev thead th small{display:block;font-size:10.5px;font-weight:500;color:var(--ink-3);letter-spacing:0}
+table.ev tbody th{
+  text-align:left;font-weight:500;color:var(--ink-2);font-size:12.5px;background:var(--card);
+  white-space:nowrap;position:sticky;left:0;
+}
+table.ev td{
+  font-family:ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;
+  font-size:13.5px;font-weight:700;
+}
+table.ev td.na{font-weight:500;color:var(--ink-3);font-size:12px;font-family:inherit}
+table.ev tr.key td{background:var(--cold-soft);color:var(--cold)}
+:root[data-theme="dark"] table.ev tr.key td{color:var(--cold)}
+
+/* ตารางหลักฐานแบบเติมเอง */
+table.ev td.fill{padding:3px}
+table.ev input{
+  width:100%;min-width:56px;box-sizing:border-box;border:1px solid var(--line-2);border-radius:5px;
+  background:var(--paper);color:var(--ink);padding:5px 6px;text-align:center;font:inherit;
+  font-family:ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;font-size:13px;font-weight:700;
+}
+table.ev input:focus{outline:2px solid var(--cold);outline-offset:-1px;border-color:var(--cold)}
+table.ev input.ok{border-color:var(--ok);background:var(--cold-soft)}
+table.ev input.bad{border-color:var(--hot);background:var(--hot-soft)}
+table.ev input:disabled{background:transparent;border-color:transparent;color:var(--ink);font-weight:700}
+.evnote{font-size:12.5px;color:var(--ink-3);margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.emptybars{
+  font-size:12.5px;color:var(--ink-3);text-align:center;padding:22px 12px;margin-top:13px;
+  border:1px dashed var(--line-2);border-radius:9px;
+}
+
+/* ลำดับขั้น Claim → Evidence → Reason */
+.steps{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.stepchip{
+  display:flex;align-items:center;gap:7px;font-size:12.5px;padding:6px 12px;border-radius:20px;
+  background:var(--card-2);color:var(--ink-3);border:1px solid var(--line);
+}
+.stepchip .d{width:17px;height:17px;border-radius:50%;display:grid;place-items:center;
+  font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:700;background:var(--line);color:var(--ink-3)}
+.stepchip.now{border-color:var(--hot);color:var(--ink);font-weight:700}
+.stepchip.now .d{background:var(--hot);color:#fff}
+.stepchip.done{color:var(--ok);border-color:var(--ok)}
+.stepchip.done .d{background:var(--ok);color:#fff}
+.cer.off{opacity:.5}
+.lockmsg{
+  display:flex;gap:9px;align-items:center;font-size:13.5px;color:var(--ink-2);
+  padding:13px 15px;border-radius:9px;background:var(--card-2);border:1px dashed var(--line-2);
+}
+.lockmsg .ic{font-size:15px}
+.locknote{
+  font-size:12.5px;color:var(--ink-2);margin-top:11px;padding:9px 13px;border-radius:8px;
+  background:var(--cold-soft);border-left:3px solid var(--cold);
+}
+
+/* ประวัติการแก้ไข — หัวใจของการเห็นพัฒนาการ */
+.drafts{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.drafts h3{font-size:12.5px;font-weight:700;margin:0 0 10px;color:var(--ink-2);letter-spacing:.02em}
+.dlist{display:grid;gap:6px}
+.d-row{display:grid;grid-template-columns:58px 1fr 52px 74px;gap:10px;align-items:center;font-size:12.5px}
+.d-row .n{color:var(--ink-3);font-family:ui-monospace,Menlo,monospace;font-size:11.5px}
+.d-row .tr{display:block;height:13px;background:var(--card-2);border-radius:4px;overflow:hidden}
+.d-row .tf{display:block;height:13px;border-radius:4px;background:var(--hot);transition:width .4s cubic-bezier(.4,0,.2,1)}
+.d-row .pc{font-family:ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;font-weight:700;text-align:right}
+.d-row .lv{font-size:10.5px;font-weight:700;text-align:center;border-radius:20px;padding:2px 0;background:var(--card-2);color:var(--ink-3)}
+.d-row.best .tf{background:var(--ok)}
+.d-row.best .lv{background:var(--cold-soft);color:var(--ok)}
+.gain{
+  margin-top:11px;font-size:13px;padding:9px 13px;border-radius:8px;
+  background:var(--cold-soft);border-left:3px solid var(--ok);color:var(--ink);
+}
+.dims{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.dim{
+  display:flex;align-items:center;gap:6px;font-size:12px;padding:5px 11px;border-radius:20px;
+  border:1px solid var(--line);background:var(--card);color:var(--ink-3);
+}
+.dim.on{border-color:var(--ok);color:var(--ok);font-weight:600}
+.nextstep{
+  margin-top:11px;font-size:13.5px;line-height:1.65;padding:10px 13px;border-radius:8px;
+  background:var(--hot-soft);border-left:3px solid var(--hot);
+}
+.lvbadge{
+  font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:20px;
+  background:var(--card);border:1px solid var(--line-2);white-space:nowrap;
+}
+
+/* ช่องเขียนเหตุผล + ผลตรวจ */
+.rsn{
+  width:100%;box-sizing:border-box;min-height:104px;resize:vertical;font:inherit;font-size:14px;line-height:1.7;
+  padding:11px 13px;border-radius:9px;border:1px solid var(--line-2);background:var(--paper);color:var(--ink);
+}
+.rsn:focus{outline:2px solid var(--cold);outline-offset:-1px;border-color:var(--cold)}
+.rsnbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.rsnbar .count{font-size:12px;color:var(--ink-3);margin-left:auto;font-family:ui-monospace,Menlo,monospace}
+.fb{margin-top:13px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.fbhead{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:11px 14px;background:var(--card-2)}
+.fbscore{
+  font-family:ui-monospace,Menlo,monospace;font-size:21px;font-weight:800;line-height:1;
+  font-variant-numeric:tabular-nums;
+}
+.fbscore.g{color:var(--ok)} .fbscore.y{color:var(--hot)} .fbscore.r{color:var(--hot)}
+.fbverdict{font-size:14px;font-weight:700}
+.fbverdict small{display:block;font-weight:400;font-size:12.5px;color:var(--ink-2);margin-top:1px}
+.fblist{display:grid;gap:0}
+.fbitem{display:flex;gap:10px;align-items:flex-start;padding:9px 14px;border-top:1px solid var(--line);font-size:13.5px}
+.fbitem .ic{font-weight:800;font-size:13px;line-height:1.5;flex:0 0 auto}
+.fbitem.hit .ic{color:var(--ok)} .fbitem.miss .ic{color:var(--ink-3)}
+.fbitem.miss{color:var(--ink-2)}
+.fbitem em{font-style:normal;color:var(--ink-3);font-size:12.5px}
+.reasonbtn{
+  font:inherit;font-size:13px;font-weight:600;padding:7px 13px;border-radius:8px;cursor:pointer;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink);
+}
+.reasonbtn:hover{background:var(--card-2)}
+.reasonbtn:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
+.reasontext{
+  font-size:14px;line-height:1.72;padding:12px 15px;border-radius:9px;margin-top:11px;
+  background:var(--card-2);border-left:3px solid var(--ok);
+}
+.reasontext strong{font-weight:700}
+.reasontext .k{font-family:ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.caution{
+  margin-top:10px;font-size:13px;line-height:1.65;padding:10px 13px;border-radius:8px;
+  background:var(--hot-soft);border-left:3px solid var(--hot);
+}
+
+.actions{display:flex;gap:7px;flex-wrap:wrap}
+.act{
+  font:inherit;font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink);transition:background .12s,border-color .12s;
+}
+.act:hover:not(:disabled){background:var(--card-2)}
+.act:disabled{opacity:.38;cursor:not-allowed}
+.act.hot{border-color:var(--hot);color:var(--hot)}
+.act.cold{border-color:var(--cold);color:var(--cold)}
+.act.ghost{border-color:var(--line);color:var(--ink-3);margin-left:auto}
+.act:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
+
+.bars{display:grid;gap:9px;margin-top:13px}
+.bar{display:grid;grid-template-columns:92px 1fr auto;gap:11px;align-items:center;font-size:12.5px}
+.bar .lab{text-align:right;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .track{height:15px;background:var(--card-2);border-radius:4px;overflow:hidden}
+.bar .fill{height:100%;border-radius:4px;transition:width .35s cubic-bezier(.4,0,.2,1)}
+.bar .val{font-family:ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;font-size:12px;font-weight:700;min-width:64px;text-align:right}
+
+/* IE ladder */
+.ladder{display:flex;align-items:stretch;gap:5px;height:210px;padding-top:6px;overflow-x:auto}
+.rung{flex:1 1 0;min-width:38px;display:flex;flex-direction:column;gap:5px;height:100%}
+/* แท่งวางในกล่องยืดหยุ่นที่แยกจากป้าย เพื่อให้ % ความสูงเทียบกับพื้นที่กราฟจริง ไม่ใช่ทั้งคอลัมน์ */
+.rung .colwrap{flex:1 1 auto;min-height:0;position:relative}
+.rung .col{position:absolute;left:0;right:0;bottom:0;border-radius:4px 4px 0 0;min-height:3px;
+  transition:height .35s cubic-bezier(.4,0,.2,1)}
+.rung .cap{font-family:ui-monospace,Menlo,monospace;font-size:10px;text-align:center;color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rung .lb{font-family:ui-monospace,Menlo,monospace;font-size:10px;text-align:center;color:var(--ink-3);padding-top:3px;border-top:1px solid var(--line)}
+.rung.jump .col{outline:2px solid var(--hot);outline-offset:1px}
+.rung.spent{opacity:1}
+.rung.todo{opacity:.34}
+.jumpnote{
+  display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:13px;
+  padding:10px 13px;border-radius:9px;background:var(--hot-soft);color:var(--ink);
+  border-left:3px solid var(--hot);
+}
+.nodata{color:var(--ink-3);font-size:12.5px;font-style:normal}
+.est{color:var(--ink-3);font-weight:400;font-size:11px}
+footer{margin-top:22px;font-size:11.5px;color:var(--ink-3);line-height:1.7}
+footer code{font-family:ui-monospace,Menlo,monospace;font-size:11px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>แนวโน้มสมบัติของธาตุ</h1>
+  <div class="sub">ใบกิจกรรม 6 · เคมี ม.4 · <b>ครูลี</b> · คาบ 1–7 (ไม่รวม f-block)</div>
+</header>
+
+<div class="hostbar" id="hostbar" style="display:none"></div>
+<div class="who" id="who" style="display:none"></div>
+
+<div class="modes" id="modes" role="group" aria-label="เลือกกิจกรรม"></div>
+
+<div class="card brief" id="brief"></div>
+
+<div class="card ptwrap" id="ptcard">
+  <div class="pthead">
+    <h2>ตารางธาตุ</h2>
+    <div class="slotpick" id="slotpick"></div>
+  </div>
+  <div id="pt"></div>
+  <div class="ptlegend">
+    <span><i style="background:#CFE8E0"></i>โลหะหมู่ 1–2 (s)</span>
+    <span><i style="background:#E4EBF1"></i>ทรานซิชัน (d)</span>
+    <span><i style="background:#E9EEDF"></i>หมู่ 13–16 (p)</span>
+    <span><i style="background:#E7E6D6"></i>กึ่งโลหะ</span>
+    <span><i style="background:#DDEAD4"></i>แฮโลเจน</span>
+    <span><i style="background:#E2E4EE"></i>แก๊สมีสกุล</span>
   </div>
 </div>
 
+<div class="card seriesbox" id="seriesbox"></div>
+
+<div class="card cer" id="claimbox"></div>
+<div class="card cer" id="evbox"></div>
+<div class="card cer" id="reasonbox"></div>
+
+<div id="sheet"></div>
+
+<footer>
+  รัศมีอะตอม = รัศมีเชิงคำนวณ (Clementi et al., 1963) · รัศมีไอออน = Shannon (เลขโคออร์ดิเนชัน 6) ·
+  IE และ EA หน่วย kJ/mol · EN มาตรา Pauling · ค่าที่มี <code>≈</code> เป็นค่าประมาณจากแบบจำลอง
+  <span class="est">(ธาตุคาบ 7 บางตัวยังไม่มีค่าวัดจริง)</span><br>
+  ภาพอะตอมทุกตัวในแถวเดียวกันใช้มาตราส่วนเดียวกันเสมอ จึงเปรียบเทียบขนาดกันได้โดยตรง — แต่ระยะห่างระหว่างวงเป็นเพียงภาพประกอบ ไม่ใช่ระยะจริง
+</footer>
+</div>
+
 <script>
-"use strict";
-/* =========================================================================
-   1) ข้อมูลธาตุ (DATA)
-   base: [Z, sym, ชื่อไทย, period, group, รัศมีโคเวเลนต์(pm), IE1(kJ/mol)]
-   ========================================================================= */
-const BASE = [
- [1,"H","ไฮโดรเจน",1,1,31,1312],[2,"He","ฮีเลียม",1,18,28,2372],
- [3,"Li","ลิเทียม",2,1,128,520],[4,"Be","เบริลเลียม",2,2,96,899],[5,"B","โบรอน",2,13,84,801],
- [6,"C","คาร์บอน",2,14,76,1086],[7,"N","ไนโตรเจน",2,15,71,1402],[8,"O","ออกซิเจน",2,16,66,1314],
- [9,"F","ฟลูออรีน",2,17,57,1681],[10,"Ne","นีออน",2,18,58,2081],
- [11,"Na","โซเดียม",3,1,166,496],[12,"Mg","แมกนีเซียม",3,2,141,738],[13,"Al","อะลูมิเนียม",3,13,121,578],
- [14,"Si","ซิลิคอน",3,14,111,786],[15,"P","ฟอสฟอรัส",3,15,107,1012],[16,"S","ซัลเฟอร์",3,16,105,1000],
- [17,"Cl","คลอรีน",3,17,102,1251],[18,"Ar","อาร์กอน",3,18,106,1521],
- [19,"K","โพแทสเซียม",4,1,203,419],[20,"Ca","แคลเซียม",4,2,176,590],[21,"Sc","สแคนเดียม",4,3,170,633],
- [22,"Ti","ไทเทเนียม",4,4,160,659],[23,"V","วาเนเดียม",4,5,153,651],[24,"Cr","โครเมียม",4,6,139,653],
- [25,"Mn","แมงกานีส",4,7,139,717],[26,"Fe","เหล็ก",4,8,132,762],[27,"Co","โคบอลต์",4,9,126,760],
- [28,"Ni","นิกเกิล",4,10,124,737],[29,"Cu","ทองแดง",4,11,132,745],[30,"Zn","สังกะสี",4,12,122,906],
- [31,"Ga","แกลเลียม",4,13,122,579],[32,"Ge","เจอร์เมเนียม",4,14,120,762],[33,"As","อาร์เซนิก",4,15,119,947],
- [34,"Se","ซีลีเนียม",4,16,120,941],[35,"Br","โบรมีน",4,17,120,1140],[36,"Kr","คริปทอน",4,18,116,1351],
- [37,"Rb","รูบิเดียม",5,1,220,403],[38,"Sr","สตรอนเชียม",5,2,195,549],[39,"Y","อิตเทรียม",5,3,190,600],
- [40,"Zr","เซอร์โคเนียม",5,4,175,640],[41,"Nb","ไนโอเบียม",5,5,164,652],[42,"Mo","โมลิบดีนัม",5,6,154,684],
- [43,"Tc","เทคนีเชียม",5,7,147,702],[44,"Ru","รูทีเนียม",5,8,146,710],[45,"Rh","โรเดียม",5,9,142,720],
- [46,"Pd","แพลเลเดียม",5,10,139,804],[47,"Ag","เงิน",5,11,145,731],[48,"Cd","แคดเมียม",5,12,144,868],
- [49,"In","อินเดียม",5,13,142,558],[50,"Sn","ดีบุก",5,14,139,709],[51,"Sb","แอนติโมนี",5,15,139,834],
- [52,"Te","เทลลูเรียม",5,16,138,869],[53,"I","ไอโอดีน",5,17,139,1008],[54,"Xe","ซีนอน",5,18,140,1170],
- [55,"Cs","ซีเซียม",6,1,244,376],[56,"Ba","แบเรียม",6,2,215,503],[57,"La","แลนทานัม",6,3,207,538],
- [72,"Hf","แฮฟเนียม",6,4,175,659],[73,"Ta","แทนทาลัม",6,5,170,761],[74,"W","ทังสเตน",6,6,162,770],
- [75,"Re","รีเนียม",6,7,151,760],[76,"Os","ออสเมียม",6,8,144,840],[77,"Ir","อิริเดียม",6,9,141,880],
- [78,"Pt","แพลทินัม",6,10,136,870],[79,"Au","ทองคำ",6,11,136,890],[80,"Hg","ปรอท",6,12,132,1007],
- [81,"Tl","แทลเลียม",6,13,145,589],[82,"Pb","ตะกั่ว",6,14,146,716],[83,"Bi","บิสมัท",6,15,148,703],
- [84,"Po","พอโลเนียม",6,16,140,812],[85,"At","แอสทาทีน",6,17,150,899],[86,"Rn","เรดอน",6,18,150,1037],
- [87,"Fr","แฟรนเซียม",7,1,260,393],[88,"Ra","เรเดียม",7,2,221,509],[89,"Ac","แอกทิเนียม",7,3,215,499],
- [104,"Rf","รัทเทอร์ฟอร์เดียม",7,4,157,null],[105,"Db","ดุบเนียม",7,5,149,null],[106,"Sg","ซีบอร์เกียม",7,6,143,null],
- [107,"Bh","โบห์เรียม",7,7,141,null],[108,"Hs","ฮัสเซียม",7,8,134,null],[109,"Mt","ไมต์เนเรียม",7,9,129,null],
- [110,"Ds","ดาร์มสตัดเทียม",7,10,128,null],[111,"Rg","เรินต์เกเนียม",7,11,121,null],[112,"Cn","โคเปอร์นิเซียม",7,12,122,null],
- [113,"Nh","นิโฮเนียม",7,13,136,null],[114,"Fl","ฟลีโรเวียม",7,14,143,null],[115,"Mc","มอสโกเวียม",7,15,162,null],
- [116,"Lv","ลิเวอร์มอเรียม",7,16,175,null],[117,"Ts","เทนเนสซีน",7,17,165,null],[118,"Og","ออกาเนสซอน",7,18,157,null]
+/* ══════════════════════════════════════════════════════════
+   ฐานข้อมูลธาตุ
+   [Z, สัญลักษณ์, ชื่อไทย, ชื่ออังกฤษ, หมู่, คาบ, ระดับพลังงาน,
+    รัศมีอะตอม pm, ประมาณ?, [IE1..IEn], EA, {ประจุ:รัศมีไอออน}]
+   ══════════════════════════════════════════════════════════ */
+const RAW = [
+[1,"H","ไฮโดรเจน","Hydrogen",1,1,[1],53,0,[1312],72.8,{"-1":208}],
+[2,"He","ฮีเลียม","Helium",18,1,[2],31,0,[2372.3,5250.5],null,{}],
+[3,"Li","ลิเทียม","Lithium",1,2,[2,1],167,0,[520.2,7298.1,11815],59.6,{"1":76}],
+[4,"Be","เบริลเลียม","Beryllium",2,2,[2,2],112,0,[899.5,1757.1,14848.7,21006.6],null,{"2":45}],
+[5,"B","โบรอน","Boron",13,2,[2,3],87,0,[800.6,2427.1,3659.7,25025.8,32826.7],26.7,{"3":27}],
+[6,"C","คาร์บอน","Carbon",14,2,[2,4],67,0,[1086.5,2352.6,4620.5,6222.7,37831,47277],121.8,{"4":16,"-4":260}],
+[7,"N","ไนโตรเจน","Nitrogen",15,2,[2,5],56,0,[1402.3,2856,4578.1,7475,9444.9,53266.6,64360],0,{"5":13,"-3":146}],
+[8,"O","ออกซิเจน","Oxygen",16,2,[2,6],48,0,[1313.9,3388.3,5300.5,7469.2,10989.5,13326.5,71330,84078],141,{"-2":140}],
+[9,"F","ฟลูออรีน","Fluorine",17,2,[2,7],42,0,[1681,3374.2,6050.4,8407.7,11022.7,15164.1,17868,92038.1],328,{"-1":133,"7":8}],
+[10,"Ne","นีออน","Neon",18,2,[2,8],38,0,[2080.7,3952.3,6122,9371,12177,15238,19999,23069.5],null,{}],
+[11,"Na","โซเดียม","Sodium",1,3,[2,8,1],190,0,[495.8,4562,6910.3,9543,13354,16613,20117,25496],52.9,{"1":102}],
+[12,"Mg","แมกนีเซียม","Magnesium",2,3,[2,8,2],145,0,[737.7,1450.7,7732.7,10542.5,13630,18020,21711,25661],null,{"2":72}],
+[13,"Al","อะลูมิเนียม","Aluminium",13,3,[2,8,3],118,0,[577.5,1816.7,2744.8,11577,14842,18379,23326,27465],41.8,{"3":53.5}],
+[14,"Si","ซิลิคอน","Silicon",14,3,[2,8,4],111,0,[786.5,1577.1,3231.6,4355.5,16091,19805,23780,29287],134.1,{"4":40}],
+[15,"P","ฟอสฟอรัส","Phosphorus",15,3,[2,8,5],98,0,[1011.8,1907,2914.1,4963.6,6273.9,21267,25431,29872],72,{"3":44,"5":38,"-3":212}],
+[16,"S","ซัลเฟอร์","Sulfur",16,3,[2,8,6],88,0,[999.6,2252,3357,4556,7004.3,8495.8,27107,31719],200.4,{"4":37,"6":29,"-2":184}],
+[17,"Cl","คลอรีน","Chlorine",17,3,[2,8,7],79,0,[1251.2,2298,3822,5158.6,6542,9362,11018,33604],349,{"7":27,"-1":181}],
+[18,"Ar","อาร์กอน","Argon",18,3,[2,8,8],71,0,[1520.6,2665.8,3931,5771,7238,8781,11995,13842],null,{}],
+[19,"K","โพแทสเซียม","Potassium",1,4,[2,8,8,1],243,0,[418.8,3052,4420,5877,7975,9590,11343,14944],48.4,{"1":138}],
+[20,"Ca","แคลเซียม","Calcium",2,4,[2,8,8,2],194,0,[589.8,1145.4,4912.4,6491,8153,10496,12270,14206],2.4,{"2":100}],
+[21,"Sc","สแกนเดียม","Scandium",3,4,[2,8,9,2],184,0,[633.1,1235,2388.6,7090.6],18.1,{"3":74.5}],
+[22,"Ti","ไทเทเนียม","Titanium",4,4,[2,8,10,2],176,0,[658.8,1309.8,2652.5,4174.6,9581],7.6,{"2":86,"3":67,"4":60.5}],
+[23,"V","วาเนเดียม","Vanadium",5,4,[2,8,11,2],171,0,[650.9,1414,2830,4507,6298.7],50.6,{"2":79,"3":64,"5":54}],
+[24,"Cr","โครเมียม","Chromium",6,4,[2,8,13,1],166,0,[652.9,1590.6,2987,4743,6702],64.3,{"2":80,"3":61.5,"6":44}],
+[25,"Mn","แมงกานีส","Manganese",7,4,[2,8,13,2],161,0,[717.3,1509,3248,4940,6990],null,{"2":83,"3":64.5,"7":46}],
+[26,"Fe","เหล็ก","Iron",8,4,[2,8,14,2],156,0,[762.5,1561.9,2957,5290,7240],15.7,{"2":78,"3":64.5}],
+[27,"Co","โคบอลต์","Cobalt",9,4,[2,8,15,2],152,0,[760.4,1648,3232,4950,7670],63.7,{"2":74.5,"3":61}],
+[28,"Ni","นิกเกิล","Nickel",10,4,[2,8,16,2],149,0,[737.1,1753,3395,5300,7339],112,{"2":69,"3":60}],
+[29,"Cu","ทองแดง","Copper",11,4,[2,8,18,1],145,0,[745.5,1957.9,3555,5536,7700],119.2,{"1":77,"2":73}],
+[30,"Zn","สังกะสี","Zinc",12,4,[2,8,18,2],142,0,[906.4,1733.3,3833,5731,7970],null,{"2":74}],
+[31,"Ga","แกลเลียม","Gallium",13,4,[2,8,18,3],136,0,[578.8,1979.3,2963,6180],41,{"3":62}],
+[32,"Ge","เจอร์เมเนียม","Germanium",14,4,[2,8,18,4],125,0,[762,1537.5,3302.1,4411,9020],118.9,{"2":73,"4":53}],
+[33,"As","อาร์เซนิก","Arsenic",15,4,[2,8,18,5],114,0,[947,1798,2735,4837,6043],78,{"3":58,"5":46,"-3":222}],
+[34,"Se","ซีลีเนียม","Selenium",16,4,[2,8,18,6],103,0,[941,2045,2973.7,4144,6590],195,{"4":50,"6":42,"-2":198}],
+[35,"Br","โบรมีน","Bromine",17,4,[2,8,18,7],94,0,[1139.9,2103,3470,4560,5760],324.6,{"7":39,"-1":196}],
+[36,"Kr","คริปทอน","Krypton",18,4,[2,8,18,8],88,0,[1350.8,2350.4,3565,5070,6240],null,{}],
+[37,"Rb","รูบิเดียม","Rubidium",1,5,[2,8,18,8,1],265,0,[403,2633,3860,5080,6850],46.9,{"1":152}],
+[38,"Sr","สตรอนเชียม","Strontium",2,5,[2,8,18,8,2],219,0,[549.5,1064.2,4138,5500,6910],5,{"2":118}],
+[39,"Y","อิตเทรียม","Yttrium",3,5,[2,8,18,9,2],212,0,[600,1180,1980,5847],29.6,{"3":90}],
+[40,"Zr","เซอร์โคเนียม","Zirconium",4,5,[2,8,18,10,2],206,0,[640.1,1270,2218,3313,7752],41.1,{"4":72}],
+[41,"Nb","ไนโอเบียม","Niobium",5,5,[2,8,18,12,1],198,0,[652.1,1380,2416,3700,4877],86.1,{"5":64}],
+[42,"Mo","โมลิบดีนัม","Molybdenum",6,5,[2,8,18,13,1],190,0,[684.3,1560,2618,4480,5257],71.9,{"6":59}],
+[43,"Tc","เทคนีเชียม","Technetium",7,5,[2,8,18,13,2],183,0,[702,1470,2850],53,{"7":56}],
+[44,"Ru","รูทีเนียม","Ruthenium",8,5,[2,8,18,15,1],178,0,[710.2,1620,2747],101,{"3":68}],
+[45,"Rh","โรเดียม","Rhodium",9,5,[2,8,18,16,1],173,0,[719.7,1740,2997],110,{"3":66.5}],
+[46,"Pd","แพลเลเดียม","Palladium",10,5,[2,8,18,18],169,0,[804.4,1870,3177],54.2,{"2":86}],
+[47,"Ag","เงิน","Silver",11,5,[2,8,18,18,1],165,0,[731,2070,3361],125.6,{"1":115,"2":94}],
+[48,"Cd","แคดเมียม","Cadmium",12,5,[2,8,18,18,2],161,0,[867.8,1631.4,3616],null,{"2":95}],
+[49,"In","อินเดียม","Indium",13,5,[2,8,18,18,3],156,0,[558.3,1820.7,2704,5210],37,{"3":80}],
+[50,"Sn","ดีบุก","Tin",14,5,[2,8,18,18,4],145,0,[708.6,1411.8,2943,3930.3,7456],107.3,{"2":118,"4":69}],
+[51,"Sb","พลวง","Antimony",15,5,[2,8,18,18,5],133,0,[834,1594.9,2440,4260,5400],101,{"3":76,"5":60,"-3":245}],
+[52,"Te","เทลลูเรียม","Tellurium",16,5,[2,8,18,18,6],123,0,[869.3,1790,2698,3610,5668],190.2,{"4":97,"6":56,"-2":221}],
+[53,"I","ไอโอดีน","Iodine",17,5,[2,8,18,18,7],115,0,[1008.4,1845.9,3180],295.2,{"5":95,"7":53,"-1":220}],
+[54,"Xe","ซีนอน","Xenon",18,5,[2,8,18,18,8],108,0,[1170.4,2046.4,3099.4],null,{"8":48}],
+[55,"Cs","ซีเซียม","Caesium",1,6,[2,8,18,18,8,1],298,0,[375.7,2234.3,3400],45.5,{"1":167}],
+[56,"Ba","แบเรียม","Barium",2,6,[2,8,18,18,8,2],253,0,[502.9,965.2,3600],13.9,{"2":135}],
+[72,"Hf","แฮฟเนียม","Hafnium",4,6,[2,8,18,32,10,2],208,0,[658.5,1440,2250,3216],17.2,{"4":71}],
+[73,"Ta","แทนทาลัม","Tantalum",5,6,[2,8,18,32,11,2],200,0,[761,1500],31,{"5":64}],
+[74,"W","ทังสเตน","Tungsten",6,6,[2,8,18,32,12,2],193,0,[770,1700],78.8,{"6":60}],
+[75,"Re","รีเนียม","Rhenium",7,6,[2,8,18,32,13,2],188,0,[760,1260,2510,3640],6,{"7":53}],
+[76,"Os","ออสเมียม","Osmium",8,6,[2,8,18,32,14,2],185,0,[840,1600],103,{"4":63}],
+[77,"Ir","อิริเดียม","Iridium",9,6,[2,8,18,32,15,2],180,0,[880,1600],150,{"4":62.5}],
+[78,"Pt","แพลทินัม","Platinum",10,6,[2,8,18,32,17,1],177,0,[870,1791],205.1,{"2":80,"4":62.5}],
+[79,"Au","ทองคำ","Gold",11,6,[2,8,18,32,18,1],174,0,[890.1,1980],222.8,{"1":137,"3":85}],
+[80,"Hg","ปรอท","Mercury",12,6,[2,8,18,32,18,2],171,0,[1007.1,1810,3300],null,{"1":119,"2":102}],
+[81,"Tl","แทลเลียม","Thallium",13,6,[2,8,18,32,18,3],156,0,[589.4,1971,2878],36,{"1":150,"3":88.5}],
+[82,"Pb","ตะกั่ว","Lead",14,6,[2,8,18,32,18,4],154,0,[715.6,1450.5,3081.5,4083,6640],34.4,{"2":119,"4":77.5}],
+[83,"Bi","บิสมัท","Bismuth",15,6,[2,8,18,32,18,5],143,0,[703,1610,2466,4370,5400],90.9,{"3":103,"5":76}],
+[84,"Po","พอโลเนียม","Polonium",16,6,[2,8,18,32,18,6],135,0,[812.1,1800],136,{"4":94,"6":67,"-2":230}],
+[85,"At","แอสทาทีน","Astatine",17,6,[2,8,18,32,18,7],127,0,[899,1600],233,{"7":62,"-1":227}],
+[86,"Rn","เรดอน","Radon",18,6,[2,8,18,32,18,8],120,0,[1037,2064],null,{}],
+[87,"Fr","แฟรนเซียม","Francium",1,7,[2,8,18,32,18,8,1],348,1,[380],46.9,{"1":180}],
+[88,"Ra","เรเดียม","Radium",2,7,[2,8,18,32,18,8,2],283,1,[509.3,979],9.6,{"2":148}],
+[104,"Rf","รัทเทอร์ฟอร์เดียม","Rutherfordium",4,7,[2,8,18,32,32,10,2],157,1,[580],null,{"4":76}],
+[105,"Db","ดุบเนียม","Dubnium",5,7,[2,8,18,32,32,11,2],149,1,[665],null,{}],
+[106,"Sg","ซีบอร์เกียม","Seaborgium",6,7,[2,8,18,32,32,12,2],143,1,[757],null,{}],
+[107,"Bh","โบห์เรียม","Bohrium",7,7,[2,8,18,32,32,13,2],141,1,[740],null,{}],
+[108,"Hs","ฮัสเซียม","Hassium",8,7,[2,8,18,32,32,14,2],134,1,[730],null,{}],
+[109,"Mt","ไมต์เนเรียม","Meitnerium",9,7,[2,8,18,32,32,15,2],129,1,[800],null,{}],
+[110,"Ds","ดาร์มสตัดเทียม","Darmstadtium",10,7,[2,8,18,32,32,16,2],128,1,[960],null,{}],
+[111,"Rg","เรินต์เกเนียม","Roentgenium",11,7,[2,8,18,32,32,17,2],121,1,[1020],null,{}],
+[112,"Cn","โคเปอร์นิเซียม","Copernicium",12,7,[2,8,18,32,32,18,2],122,1,[1155],null,{}],
+[113,"Nh","นิโฮเนียม","Nihonium",13,7,[2,8,18,32,32,18,3],136,1,[707],null,{}],
+[114,"Fl","ฟลีโรเวียม","Flerovium",14,7,[2,8,18,32,32,18,4],143,1,[832],null,{}],
+[115,"Mc","มอสโกเวียม","Moscovium",15,7,[2,8,18,32,32,18,5],162,1,[538],null,{}],
+[116,"Lv","ลิเวอร์มอเรียม","Livermorium",16,7,[2,8,18,32,32,18,6],175,1,[663],null,{}],
+[117,"Ts","เทนเนสซีน","Tennessine",17,7,[2,8,18,32,32,18,7],165,1,[736],null,{"-1":240}],
+[118,"Og","โอกาเนสซอน","Oganesson",18,7,[2,8,18,32,32,18,8],157,1,[860],null,{}]
 ];
-// ธาตุที่รัศมีเป็นค่าประมาณ (คาบ 7 + At/Rn)
-const APPROX_R = new Set([85,86,87,88,89,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118]);
 
-// การจัดเรียงอิเล็กตรอนแบบยกเว้น (ย้าย e จาก orbital หนึ่งไปอีก orbital) : [fromN,fromL, toN,toL, amount]
-const EXC = {
- 24:[4,0,3,2,1], 29:[4,0,3,2,1],                 // Cr, Cu
- 41:[5,0,4,2,1], 42:[5,0,4,2,1], 44:[5,0,4,2,1], 45:[5,0,4,2,1], 46:[5,0,4,2,2], 47:[5,0,4,2,1], // Nb Mo Ru Rh Pd Ag
- 78:[6,0,5,2,1], 79:[6,0,5,2,1], // Pt, Au
- 57:[4,3,5,2,1], 89:[5,3,6,2,1]  // La, Ac (ไม่มีอิเล็กตรอนใน f)
+const EL = {}, ORDER = [];
+for (const r of RAW){
+  const e = {Z:r[0],sym:r[1],th:r[2],en:r[3],group:r[4],period:r[5],
+             shells:r[6],r:r[7],rEst:!!r[8],ie:r[9],ea:r[10],ionR:r[11]};
+  EL[e.Z]=e; ORDER.push(e.Z);
+}
+/* EA ลำดับที่ 2 (ดูดพลังงาน) — X⁻ + e⁻ → X²⁻ */
+const EA2 = {8:-744, 16:-456, 34:-435, 52:-410};
+
+/* อิเล็กโทรเนกาทิวิตี (Pauling) — ธาตุที่ไม่มีค่าคือแก๊สมีสกุลบางตัวและธาตุคาบ 7 */
+const EN = {
+1:2.20, 3:0.98, 4:1.57, 5:2.04, 6:2.55, 7:3.04, 8:3.44, 9:3.98,
+11:0.93, 12:1.31, 13:1.61, 14:1.90, 15:2.19, 16:2.58, 17:3.16,
+19:0.82, 20:1.00, 21:1.36, 22:1.54, 23:1.63, 24:1.66, 25:1.55, 26:1.83, 27:1.88,
+28:1.91, 29:1.90, 30:1.65, 31:1.81, 32:2.01, 33:2.18, 34:2.55, 35:2.96, 36:3.00,
+37:0.82, 38:0.95, 39:1.22, 40:1.33, 41:1.60, 42:2.16, 43:1.90, 44:2.20, 45:2.28,
+46:2.20, 47:1.93, 48:1.69, 49:1.78, 50:1.96, 51:2.05, 52:2.10, 53:2.66, 54:2.60,
+55:0.79, 56:0.89, 72:1.30, 73:1.50, 74:2.36, 75:1.90, 76:2.20, 77:2.20, 78:2.28,
+79:2.54, 80:2.00, 81:1.62, 82:2.33, 83:2.02, 84:2.00, 85:2.20,
+87:0.79, 88:0.90
 };
 
-// พลังงานไอออไนเซชันลำดับต่าง ๆ IE1..IEn (kJ/mol)
-const IES = {
- He:[2372,5251], Li:[520,7298,11815], Be:[899,1757,14849,21007], B:[801,2427,3660,25026,32827],
- C:[1086,2353,4620,6223,37831,47277], N:[1402,2856,4578,7475,9445,53267,64360],
- O:[1314,3388,5301,7469,10990,13327,71337,84080], F:[1681,3374,6050,8408,11023,15164,17868,92038,106435],
- Ne:[2081,3952,6122,9371,12177,15238,19999,23070,115380],
- Na:[496,4562,6910,9543,13354,16613,20117,25496,28932,141362],
- Mg:[738,1451,7733,10540,13630,18020,21711,25661,31653,35458],
- Al:[578,1817,2745,11577,14842,18379,23326,27465,31853,38473],
- Si:[786,1577,3232,4356,16091,19805,23780,29287,33878,38726],
- P:[1012,1907,2914,4964,6274,21267,25431,29872], S:[1000,2252,3357,4556,7004,8496,27107,31719],
- Cl:[1251,2298,3822,5158,6542,9362,11018,33604], Ar:[1521,2666,3931,5771,7238,8781,11995,13842],
- K:[419,3052,4420,5877,7975,9590,11343], Ca:[590,1145,4912,6491,8153,10496],
- Ga:[579,1979,2963,6180], Ge:[762,1537,3302,4411,9020], As:[947,1798,2735,4837,6043,12310],
- Se:[941,2045,2974,4144,6590,7880], Br:[1140,2100,3470,4560], Kr:[1351,2350,3565,5070],
- Sc:[633,1235,2389,7091], Ti:[659,1310,2653,4175,9581], V:[651,1414,2830,4507,6299],
- Cr:[653,1591,2987,4743], Mn:[717,1509,3248,4940], Fe:[762,1562,2957,5290],
- Co:[760,1648,3232,4950], Ni:[737,1753,3395,5300], Cu:[745,1958,3555], Zn:[906,1733,3833,5731],
- Rb:[403,2633,3860], Sr:[549,1064,4138]
+const SHELL_NAME = ["K","L","M","N","O","P","Q"];
+const CAT = z => {
+  const e = EL[z], g = e.group, p = e.period;
+  if (g===18) return "noble";
+  if (g===17) return "halogen";
+  if (g===1)  return "s1";
+  if (g===2)  return "s2";
+  if (g>=3 && g<=12) return "d";
+  if ([5,14,32,33,51,52,84,85].includes(z)) return "metalloid";
+  return "p";
 };
 
-// สัมพรรคภาพอิเล็กตรอน EA (kJ/mol, ค่าบวก = คายพลังงาน/ชอบรับ e)
-const EA = {
- H:73,Li:60,B:27,C:122,O:141,F:328,Na:53,Al:42,Si:134,P:72,S:200,Cl:349,
- K:48,Ca:2,Sc:18,Ti:8,V:51,Cr:65,Fe:15,Co:64,Ni:112,Cu:119,Ga:41,Ge:119,As:78,Se:195,Br:325,
- Rb:47,Sr:5,Y:30,Nb:86,Mo:72,Tc:53,Ru:101,Rh:110,Pd:54,Ag:126,In:39,Sn:107,Sb:101,Te:190,I:295,
- Cs:46,Ba:14,W:79,Os:104,Ir:151,Pt:205,Au:223,Tl:36,Pb:35,Bi:91,Po:183,At:233
-};
+/* ══════════════════════════════════════════════════════════
+   ฟิสิกส์ของแบบจำลอง
+   ══════════════════════════════════════════════════════════ */
 
-// รัศมีไอออนจริง (Shannon, 6-coordinate, pm) — ใช้ยึดค่าจริงและเทียบกับแบบจำลอง
-const ION = {
- Li:{1:76}, Be:{2:45}, B:{3:27}, C:{4:16}, N:{"-3":146,5:13}, O:{"-2":140}, F:{"-1":133},
- Na:{1:102}, Mg:{2:72}, Al:{3:54}, Si:{4:40}, P:{"-3":212,5:38}, S:{"-2":184,6:29}, Cl:{"-1":181,7:27},
- K:{1:138}, Ca:{2:100}, Sc:{3:75}, Ti:{4:61}, V:{3:64}, Cr:{3:62}, Mn:{2:83}, Fe:{2:78,3:65},
- Co:{2:75}, Ni:{2:69}, Cu:{1:77,2:73}, Zn:{2:74}, Ga:{3:62}, Ge:{4:53}, As:{3:58}, Se:{"-2":198}, Br:{"-1":196},
- Rb:{1:152}, Sr:{2:118}, Y:{3:90}, Zr:{4:72}, Nb:{5:64}, Mo:{6:59}, Ag:{1:115}, Cd:{2:95},
- In:{3:80}, Sn:{2:118,4:69}, Sb:{3:76}, Te:{"-2":221}, I:{"-1":220},
- Cs:{1:167}, Ba:{2:135}, La:{3:103}, Hf:{4:71}, Hg:{2:102}, Tl:{1:150,3:89}, Pb:{2:119,4:78}, Bi:{3:103},
- Fr:{1:180}, Ra:{2:148}, Ac:{3:112}
-};
-
-// ไอออนสามัญของแต่ละธาตุ (ใช้เป็นจุดยึด/ค่าตั้งต้น)
-const COMMON = {
- Li:1,Be:2,B:3,N:-3,O:-2,F:-1, Na:1,Mg:2,Al:3,P:-3,S:-2,Cl:-1,
- K:1,Ca:2,Sc:3,Ti:4,V:3,Cr:3,Mn:2,Fe:3,Co:2,Ni:2,Cu:2,Zn:2,Ga:3,Ge:4,As:3,Se:-2,Br:-1,
- Rb:1,Sr:2,Y:3,Zr:4,Nb:5,Mo:6,Ag:1,Cd:2,In:3,Sn:2,Sb:3,Te:-2,I:-1,
- Cs:1,Ba:2,La:3,Hf:4,Hg:2,Tl:1,Pb:2,Bi:3,Fr:1,Ra:2,Ac:3
-};
-
-/* ---- สร้าง map ---- */
-const ELS = {};      // sym -> element
-const BYZ = {};      // Z -> element
-BASE.forEach(r=>{
-  const e={Z:r[0],sym:r[1],th:r[2],period:r[3],group:r[4],radius:r[5],ie1:r[6]};
-  ELS[e.sym]=e; BYZ[e.Z]=e;
-});
-
-/* =========================================================================
-   2) เครื่องยนต์อะตอม — การจัดเรียงอิเล็กตรอน / รัศมี (Slater)
-   ========================================================================= */
-const AUFBAU = [[1,0],[2,0],[2,1],[3,0],[3,1],[4,0],[3,2],[4,1],[5,0],[4,2],[5,1],
-  [6,0],[4,3],[5,2],[6,1],[7,0],[5,3],[6,2],[7,1]];
-const CAP=l=>[2,6,10,14][l];
-const Lname=["s","p","d","f"];
-
-// การจัดเรียงพื้นฐานของอะตอมเป็นกลาง -> array ของ {n,l,count}
-function neutralConfig(Z){
-  let e=Z; const cfg=[];
-  for(const [n,l] of AUFBAU){ if(e<=0) break; const c=Math.min(CAP(l),e); cfg.push({n,l,count:c}); e-=c; }
-  if(EXC[Z]){
-    const [fn,fl,tn,tl,amt]=EXC[Z];
-    const from=cfg.find(o=>o.n===fn&&o.l===fl);
-    let to=cfg.find(o=>o.n===tn&&o.l===tl);
-    if(from){ from.count-=amt; if(!to){ to={n:tn,l:tl,count:0}; cfg.push(to);} to.count+=amt;
-      if(from.count<=0) cfg.splice(cfg.indexOf(from),1); }
+/** การจัดเรียงอิเล็กตรอนเมื่อมี e ตัว: ถอดจากวงนอกสุด / เติมเข้าวงนอกสุด */
+function shellsFor(Z, e){
+  const s = EL[Z].shells.slice();
+  let t = s.reduce((a,b)=>a+b,0);
+  while (t > e && s.length){ const i=s.length-1; s[i]--; t--; if(!s[i]) s.pop(); }
+  while (t < e){
+    const i = s.length-1, cap = (i===0) ? 2 : 8;
+    if (i<0 || s[i] >= cap) s.push(1); else s[i]++;
+    t++;
   }
-  return cfg.filter(o=>o.count>0);
+  return s;
 }
 
-// config ของไอออน: charge>0 ดึงออก, charge<0 เติม
-function ionConfig(Z, charge){
-  let cfg = neutralConfig(Z).map(o=>({...o}));
-  let q = charge;
-  if(q>0){ // ดึงอิเล็กตรอนวงนอกสุดออก (n สูงสุดก่อน, ภายใน n เดียวกันเอา l สูงก่อน)
-    while(q>0){
-      let best=null;
-      for(const o of cfg){ if(o.count<=0) continue;
-        if(!best || o.n>best.n || (o.n===best.n && o.l>best.l)) best=o; }
-      if(!best) break;
-      best.count--; q--;
-    }
-    cfg=cfg.filter(o=>o.count>0);
-  } else if(q<0){ // เติมตามลำดับ Aufbau
-    let add=-q;
-    while(add>0){
-      let placed=false;
-      for(const [n,l] of AUFBAU){
-        let o=cfg.find(x=>x.n===n&&x.l===l);
-        const cur=o?o.count:0;
-        if(cur<CAP(l)){ if(!o){o={n,l,count:0}; cfg.push(o);} o.count++; add--; placed=true; break; }
-      }
-      if(!placed) break;
-    }
+/** จำนวนอิเล็กตรอนสูงสุดที่เติมได้ = เติมวงนอกให้ครบ 8 (หรือ 2 สำหรับวง K) */
+function maxElectrons(Z){
+  const s = EL[Z].shells, i = s.length-1, cap = (i===0)?2:8;
+  const t = s.reduce((a,b)=>a+b,0);
+  return t + Math.max(0, cap - s[i]);
+}
+
+/** ประจุนิวเคลียสประสิทธิผลแบบสเลเตอร์ (ระดับวง) ของอิเล็กตรอนวงนอกสุด */
+function zEff(Z, shells){
+  const n = shells.length;
+  if (!n) return Z;
+  const outer = shells[n-1], prev = n>=2 ? shells[n-2] : 0;
+  let inner = 0;
+  for (let i=0;i<n-2;i++) inner += shells[i];
+  const same = (n===1) ? 0.30 : 0.35;
+  return Math.max(0.5, Z - same*(outer-1) - 0.85*prev - 1.00*inner);
+}
+
+/* ดัชนีไอออนอ้างอิงสำหรับอนุกรมไอโซอิเล็กทรอนิก */
+const ION_REF = {};
+for (const z of ORDER){
+  for (const q in EL[z].ionR){
+    const n = z - (+q);
+    (ION_REF[n] = ION_REF[n] || []).push({Z:z, q:+q, r:EL[z].ionR[q]});
   }
-  return cfg.sort((a,b)=> a.n-b.n || a.l-b.l ).filter(o=>o.count>0);
 }
 
-// จำนวนอิเล็กตรอนต่อระดับพลังงานหลัก (index0 = n1)
-function shellCounts(cfg){
-  const sh=[];
-  for(const o of cfg){ sh[o.n-1]=(sh[o.n-1]||0)+o.count; }
-  for(let i=0;i<sh.length;i++) if(!sh[i]) sh[i]=0;
-  // ตัด n บนสุดที่เป็น 0 ทิ้ง
-  while(sh.length && sh[sh.length-1]===0) sh.pop();
-  return sh;
-}
+/** รัศมี (pm) ของอะตอม/ไอออนที่มีอิเล็กตรอน e ตัว → {r, exact} */
+function radiusOf(Z, e){
+  const el = EL[Z], q = Z - e;
+  if (e <= 0) return {r:0.5, exact:false};
+  if (q === 0) return {r:el.r, exact:!el.rEst};
+  if (el.ionR[q] != null) return {r:el.ionR[q], exact:true};
 
-// ลำดับกลุ่มของ Slater
-const SEQ=['1sp','2sp','3sp','3d','4sp','4d','4f','5sp','5d','5f','6sp','6d','7sp'];
-const orderIdx=(n,t)=>{const i=SEQ.indexOf(n+t); return i<0?99:i;};
-const NSTAR={1:1,2:2,3:3,4:3.7,5:4.0,6:4.2,7:4.3};
+  const sh = shellsFor(Z, e), ze = zEff(Z, sh), n = sh.length;
+  const scale = (n*n)/ze;
 
-// คำนวณ Z_eff และ n* ของอิเล็กตรอนวงนอกสุด (Slater's rules)
-function slaterOuter(Z,cfg){
-  const groups={};
-  for(const o of cfg){ const t=o.l<=1?'sp':(o.l===2?'d':'f'); const k=o.n+t;
-    if(!groups[k]) groups[k]={n:o.n,t,count:0}; groups[k].count+=o.count; }
-  const arr=Object.values(groups);
-  if(!arr.length) return {Zeff:Z, nstar:1, nOut:1};
-  let G=arr[0];
-  for(const g of arr) if(orderIdx(g.n,g.t)>orderIdx(G.n,G.t)) G=g;
-  let S=0;
-  for(const g of arr){
-    if(g===G){ S+=(g.count-1)*((G.n===1&&G.t==='sp')?0.30:0.35); }
-    else if(G.t==='sp'){
-      if(g.n===G.n-1) S+=g.count*0.85;
-      else if(g.n<G.n-1) S+=g.count*1.0;
-    } else {
-      if(orderIdx(g.n,g.t)<orderIdx(G.n,G.t)) S+=g.count*1.0;
+  // 1) อ้างอิงจากไอออนไอโซอิเล็กทรอนิกของธาตุอื่น (แม่นที่สุด)
+  const iso = (ION_REF[e]||[]).filter(x=>x.Z!==Z);
+  if (iso.length){
+    let best=null;
+    for (const x of iso){
+      const d = Math.abs(x.Z - Z);
+      if (!best || d < best.d) best = {d, x};
     }
+    const x = best.x, shR = shellsFor(x.Z, e);
+    const sr = (shR.length*shR.length)/zEff(x.Z, shR);
+    return {r: x.r * scale/sr, exact:false};
   }
-  return {Zeff:Math.max(Z-S,0.5), nstar:NSTAR[G.n]||4.3, nOut:G.n};
-}
-
-// ค่าจากแบบจำลอง (สัดส่วน) ~ n*^2 / Z_eff
-function modelM(Z, charge){
-  const {Zeff,nstar}=slaterOuter(Z, ionConfig(Z,charge));
-  return (nstar*nstar)/Zeff;
-}
-const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
-
-// จุดยึดรัศมี (charge -> รัศมีจริง pm): อะตอมเป็นกลาง(โคเวเลนต์) + ไอออน Shannon
-function anchorsFor(Z){
-  const e=BYZ[Z]; const list=[{q:0,r:e.radius}];
-  const ions=ION[e.sym];
-  if(ions) for(const k in ions) list.push({q:parseInt(k,10), r:ions[k]});
-  return list.sort((a,b)=>a.q-b.q);
-}
-
-// รัศมีของไอออน (pm) + ว่าเป็นค่าจริงหรือประมาณ
-function ionRadius(Z, charge){
-  const A=anchorsFor(Z);
-  const exact=A.find(a=>a.q===charge);
-  if(exact) return {r:exact.r, real:true};
-  let lo=null,hi=null;
-  for(const a of A){ if(a.q<=charge && (!lo||a.q>lo.q)) lo=a; if(a.q>=charge && (!hi||a.q<hi.q)) hi=a; }
-  let r;
-  if(lo&&hi){
-    const ml=Math.log(modelM(Z,lo.q)), mh=Math.log(modelM(Z,hi.q)), mq=Math.log(modelM(Z,charge));
-    const f=(mq-ml)/(mh-ml||1); r=lo.r*Math.pow(hi.r/lo.r, f);
-  } else {
-    const base=lo||hi;
-    const others=A.filter(a=>a!==base);
-    if(others.length){
-      others.sort((a,b)=>Math.abs(a.q-charge)-Math.abs(b.q-charge));
-      const ref=others[0];
-      let p=Math.log(base.r/ref.r)/Math.log(modelM(Z,base.q)/modelM(Z,ref.q));
-      p=clamp(p,0.05,6);
-      const Acoef=base.r/Math.pow(modelM(Z,base.q),p);
-      r=Acoef*Math.pow(modelM(Z,charge),p);
-    } else {
-      r=base.r*(modelM(Z,charge)/modelM(Z,base.q));
+  // 2) อ้างอิงจากไอออนตัวอื่นของธาตุเดียวกัน
+  const own = Object.keys(el.ionR).map(k=>({q:+k, r:el.ionR[k], e:Z-(+k)}));
+  if (own.length){
+    let best=null;
+    for (const x of own){
+      const d = Math.abs(x.e - e);
+      if (!best || d < best.d) best = {d, x};
     }
+    const x = best.x, shR = shellsFor(Z, x.e);
+    const sr = (shR.length*shR.length)/zEff(Z, shR);
+    return {r: x.r * scale/sr, exact:false};
   }
-  return {r:Math.round(r), real:false};
+  // 3) อ้างอิงจากอะตอมกลาง
+  const sh0 = el.shells, sr0 = (sh0.length*sh0.length)/zEff(Z, sh0);
+  return {r: el.r * scale/sr0, exact:false};
 }
 
-// IE ลำดับที่ k (1-based) ของธาตุ; null ถ้าไม่มีข้อมูล
-function ieOf(sym,k){
-  const arr=IES[sym]; if(arr&&arr[k-1]!=null) return arr[k-1];
-  if(k===1 && ELS[sym].ie1!=null) return ELS[sym].ie1;
+/** พลังงานไอออไนเซชันลำดับที่ k (1-based) */
+function ieOf(Z, k){ const a = EL[Z].ie; return (k>=1 && k<=a.length) ? a[k-1] : null; }
+
+/** พลังงานที่ใช้ดึง e⁻ ออกจากไอออนลบประจุ q (q<0) = EA ลำดับที่ |q|
+    บวก = ต้องใช้พลังงาน, ลบ = คายพลังงาน
+    (เติม e⁻ คายพลังงานเท่าใด ดึงคืนก็ต้องใช้พลังงานเท่านั้น) */
+function detachEnergy(Z, q){
+  if (q === -1) return EL[Z].ea;              // EA₁ เช่น O⁻ → O + e⁻ ใช้ 141
+  if (q === -2) return EA2[Z] != null ? EA2[Z] : null; // EA₂ ติดลบ → O²⁻ → O⁻ + e⁻ คาย 744
   return null;
 }
-// จำนวนเวเลนซ์อิเล็กตรอน (อิเล็กตรอนในระดับพลังงานหลักวงนอกสุด)
-function valenceCount(Z){ const sh=shellCounts(neutralConfig(Z)); return sh[sh.length-1]; }
 
-/* =========================================================================
-   3) การวาดอะตอม (SVG) + ตารางธาตุ
-   ========================================================================= */
-const SHELL_LETTER=["K","L","M","N","O","P","Q"];
-const SUP={'-':'⁻','+':'⁺',0:'⁰',1:'¹',2:'²',3:'³',4:'⁴',5:'⁵',6:'⁶',7:'⁷',8:'⁸',9:'⁹'};
-function chargeSup(q){
-  if(q===0) return "";
-  const n=Math.abs(q); const sign=q>0?'+':'-';
-  const digits = n===1? '' : String(n).split('').map(d=>SUP[d]).join('');
-  return digits + SUP[sign];
-}
-function ionLabel(Z,q){ return BYZ[Z].sym + chargeSup(q); }
-
-// วาดอะตอม/ไอออนเป็น SVG  (opts: Z, charge, pxPerPm, ghostPm)
-function atomSVG(Z, charge, pxPerPm, ghostPm){
-  const cx=180, cy=180, nucR=20;
-  const cfg=ionConfig(Z,charge);
-  const shells=shellCounts(cfg);
-  const rad=ionRadius(Z,charge);
-  const maxDraw=152;
-  let pxR=rad.r*pxPerPm;
-  pxR=clamp(pxR, nucR+26, maxDraw);
-  const nShell=shells.length;
-  let s='<svg class="atom" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg">';
-  // ghost (รัศมีอะตอมเดิม)
-  if(ghostPm){
-    let gpx=clamp(ghostPm*pxPerPm, nucR+26, maxDraw);
-    s+=`<circle cx="${cx}" cy="${cy}" r="${gpx.toFixed(1)}" fill="none" stroke="#8aa0c8" stroke-width="1.4" stroke-dasharray="5 5" opacity="0.6"/>`;
-  }
-  // วงรัศมีไอออน/อะตอม
-  s+=`<circle cx="${cx}" cy="${cy}" r="${pxR.toFixed(1)}" fill="rgba(79,195,247,0.05)" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="2 4"/>`;
-  // shells + electrons
-  for(let i=0;i<nShell;i++){
-    const n=i+1, cnt=shells[i];
-    const rr = nucR + (pxR-nucR)*((i+1)/nShell);
-    const isVal=(i===nShell-1);
-    s+=`<circle cx="${cx}" cy="${cy}" r="${rr.toFixed(1)}" fill="none" stroke="${isVal?'var(--accent2)':'var(--shellc)'}" stroke-width="${isVal?1.8:1.2}"/>`;
-    // electrons
-    const dotR = cnt>18?2.4: cnt>10?3:4.2;
-    const start=-Math.PI/2 + (i*0.5);
-    for(let k=0;k<cnt;k++){
-      const ang=start + k*2*Math.PI/cnt;
-      const ex=cx+rr*Math.cos(ang), ey=cy+rr*Math.sin(ang);
-      s+=`<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="${dotR}" fill="${isVal?'var(--accent2)':'#7fd4ff'}"/>`;
-    }
-    // ป้ายจำนวนใกล้แกนบน
-    const lx=cx, ly=cy-rr-3;
-    s+=`<text x="${lx}" y="${ly.toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${isVal?'var(--accent2)':'#9fc7e8'}">${cnt}</text>`;
-  }
-  // nucleus
-  s+=`<circle cx="${cx}" cy="${cy}" r="${nucR}" fill="var(--nucleus)"/>`;
-  s+=`<text x="${cx}" y="${cy-2}" text-anchor="middle" font-size="14" font-weight="800" fill="#3a0f00">+${Z}</text>`;
-  s+=`<text x="${cx}" y="${cy+11}" text-anchor="middle" font-size="8.5" fill="#5a1a00">protons</text>`;
-  s+='</svg>';
-  return {svg:s, shells, rad, cfg};
+const fmtE = v => v==null ? "—" : Math.round(v).toLocaleString("en-US");
+const fmtR = v => v>=100 ? Math.round(v) : Math.round(v*10)/10;
+const SUP = {"0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹"};
+const SUB = {"0":"₀","1":"₁","2":"₂","3":"₃","4":"₄","5":"₅","6":"₆","7":"₇","8":"₈","9":"₉"};
+const sup = n => String(n).split("").map(c=>SUP[c]||c).join("");  // ประจุไอออน เช่น Na⁺, N³⁻
+const sub = n => String(n).split("").map(c=>SUB[c]||c).join("");  // ลำดับ IE เช่น IE₁, IE₂
+const chargeLabel = q => q===0 ? "" : (Math.abs(q)>1 ? Math.abs(q) : "") + (q>0 ? "+" : "−");
+function ionName(Z, q){
+  if (q === 0) return EL[Z].sym;
+  return EL[Z].sym + (Math.abs(q)>1 ? sup(Math.abs(q)) : "") + (q>0 ? "⁺" : "⁻");
 }
 
-// แผงข้อมูลของอะตอม/ไอออน
-function dataPanel(Z, charge, opts){
-  opts=opts||{};
-  const e=BYZ[Z]; const eCount=Z-charge;
-  const {shells,rad,cfg}=peek(Z,charge);
-  let html=`<table class="datatable"><tbody>`;
-  html+=`<tr><td>สัญลักษณ์</td><td>${ionLabel(Z,charge)} <span class="note">(${e.th})</span></td></tr>`;
-  html+=`<tr><td>เลขอะตอม Z (ประจุนิวเคลียส)</td><td>+${Z}</td></tr>`;
-  html+=`<tr><td>จำนวนอิเล็กตรอน</td><td>${eCount}</td></tr>`;
-  if(charge!==0) html+=`<tr><td>ประจุไอออน</td><td class="badge-charge" style="color:${charge>0?'var(--pos)':'var(--neg)'}">${charge>0?'+':''}${charge}</td></tr>`;
-  const rlabel = charge===0?'รัศมีอะตอม':'รัศมีไอออน';
-  html+=`<tr><td>${rlabel}</td><td>${rad.r} pm ${rad.real?'':'<span class="approx">≈ ประมาณ</span>'}</td></tr>`;
-  if(APPROX_R.has(Z)&&charge===0) html+=`<tr><td></td><td><span class="approx">รัศมีอะตอมเป็นค่าประมาณ</span></td></tr>`;
-  if(opts.showIE1 && e.ie1!=null) html+=`<tr><td>IE₁</td><td>${e.ie1.toLocaleString()} kJ/mol</td></tr>`;
-  if(opts.showEA){ const ea=EA[e.sym]; html+=`<tr><td>EA (สัมพรรคภาพอิเล็กตรอน)</td><td>${ea!=null? ea+' kJ/mol' : '—'}</td></tr>`; }
-  html+=`</tbody></table>`;
-  // ระดับพลังงานหลัก
-  html+=`<div class="shelllist" style="margin-top:8px">`;
-  for(let i=shells.length-1;i>=0;i--){
-    const isVal=(i===shells.length-1);
-    html+=`<div class="shellrow ${isVal?'valence':''}">
-      <span>ระดับ n=${i+1} <span class="note">(${SHELL_LETTER[i]})</span>${isVal?' · วงนอกสุด':''}</span>
-      <b>${shells[i]} e⁻</b></div>`;
-  }
-  html+=`</div>`;
-  return html;
-}
-// คำนวณ shells/rad/cfg โดยไม่วาด
-function peek(Z,charge){
-  const cfg=ionConfig(Z,charge);
-  return {shells:shellCounts(cfg), rad:ionRadius(Z,charge), cfg};
+/* ══════════════════════════════════════════════════════════
+   กิจกรรมตามใบกิจกรรม 6 — Claim / Evidence / Reason
+   ══════════════════════════════════════════════════════════ */
+
+/** ไอออนลบนี้เกิดขึ้นจริงไหม — ถ้าต้องใส่อิเล็กตรอนเกินกว่าจะทำให้วงนอกครบ 8 ถือว่าไม่เกิด */
+function viable(Z, e){ return e <= maxElectrons(Z); }
+
+/** เรียกชื่อสปีชีส์แบบในใบงาน: "ธาตุ Li" / "ไอออน N³⁻" */
+function term(s){
+  const q = s.Z - s.e;
+  return (q === 0 ? "ธาตุ " : "ไอออน ") + ionName(s.Z, q);
 }
 
-/* ---------- ตารางธาตุ picker ---------- */
-let pickerCB=null;
-function blockColor(g){ if(g<=2) return 'var(--s-block)'; if(g===18) return 'var(--noble)'; if(g>=13) return 'var(--p-block)'; return 'var(--d-block)'; }
-function buildPtable(){
-  const grid=document.getElementById('ptable');
-  let html='';
-  for(let p=1;p<=7;p++){
-    for(let g=1;g<=18;g++){
-      // หา element ที่ (period,group) นี้
-      const e=BASE.find(r=>r[3]===p&&r[4]===g);
-      if(!e){ html+=`<div class="pcell empty"></div>`; continue; }
-      const Z=e[0], sym=e[1];
-      html+=`<div class="pcell" style="background:${blockColor(g)}" data-z="${Z}" title="${e[2]} (Z=${Z})">
-        <span class="z">${Z}</span><span>${sym}</span></div>`;
-    }
-  }
-  grid.innerHTML=html;
-  grid.querySelectorAll('.pcell[data-z]').forEach(c=>{
-    c.onclick=()=>{ const Z=parseInt(c.dataset.z,10); if(pickerCB){pickerCB(Z);} closePicker(); };
-  });
-}
-function openPicker(title, cb, filter){
-  pickerCB=cb;
-  document.getElementById('ptTitle').textContent=title||'เลือกธาตุจากตารางธาตุ';
-  // filter: function(Z)->bool ; disable ตัวที่ไม่ผ่าน
-  document.querySelectorAll('#ptable .pcell[data-z]').forEach(c=>{
-    const Z=parseInt(c.dataset.z,10);
-    c.classList.toggle('disabled', filter? !filter(Z) : false);
-  });
-  document.getElementById('ptModal').classList.add('show');
-}
-function closePicker(){ document.getElementById('ptModal').classList.remove('show'); pickerCB=null; }
-document.getElementById('ptModal').addEventListener('click',e=>{ if(e.target.id==='ptModal') closePicker(); });
-
-/* =========================================================================
-   4) กิจกรรมทั้ง 5
-   ========================================================================= */
-const state={
-  act:1,
-  a1:{a:11,b:17},          // เปรียบเทียบรัศมีอะตอม 2 ธาตุ (Na, Cl)
-  a2:{Z:11, charge:0},     // สร้างไอออน + ขนาดเปลี่ยน
-  a3:{a:11,b:17, ra:0, rb:0}, // ดึงเวเลนซ์ + IE เปรียบเทียบ 2 ธาตุ
-  a4:{Z:12, removed:0},    // IE ลำดับ + ไอออนเล็กลง (Mg)
-  a5:{a:8, b:9, ca:-2, cb:-1} // ไอออนลบ 2 ตัว (O²⁻, F⁻)
+/* แถวหลักฐาน — หัวข้อตรงกับตารางในใบกิจกรรม */
+const ROWS = {
+  shells:   {label:"จำนวนระดับพลังงานของอิเล็กตรอน", val:s=>shellsFor(s.Z,s.e).length,
+             txt:s=>String(shellsFor(s.Z,s.e).length)},
+  protons:  {label:"จำนวนโปรตอน (p⁺)",  val:s=>s.Z,  txt:s=>String(s.Z)},
+  electrons:{label:"จำนวนอิเล็กตรอน (e⁻)", val:s=>s.e, txt:s=>String(s.e)},
+  radius:   {label:"รัศมีอะตอม / รัศมีไอออน (pm)",
+             val:s=>viable(s.Z,s.e) ? radiusOf(s.Z,s.e).r : null,
+             txt:s=>{ if(!viable(s.Z,s.e)) return null;
+                      const r=radiusOf(s.Z,s.e); return (r.exact?"":"≈")+fmtR(r.r); }},
+  ie1:      {label:"IE₁ (kJ/mol)",  val:s=>EL[s.Z].ie[0], txt:s=>fmtE(EL[s.Z].ie[0])},
+  ieorder:  {label:"ลำดับของ IE",    val:s=>s.order, txt:s=>"IE"+sub(s.order), plain:true},
+  ieval:    {label:"ค่า IE (kJ/mol)", val:s=>ieOf(s.Z,s.order), txt:s=>fmtE(ieOf(s.Z,s.order))},
+  ea:       {label:"EA (kJ/mol)",   val:s=>EL[s.Z].ea, txt:s=>EL[s.Z].ea==null?null:fmtE(EL[s.Z].ea)},
+  en:       {label:"EN (Pauling)",  val:s=>EN[s.Z], txt:s=>EN[s.Z]==null?null:EN[s.Z].toFixed(2)}
 };
 
-const TABS=[
-  {id:1,name:"1 · เทียบรัศมีอะตอม"},
-  {id:2,name:"2 · สร้างไอออน & ขนาด"},
-  {id:3,name:"3 · ดึงเวเลนซ์ & IE"},
-  {id:4,name:"4 · IE ลำดับที่ 1,2,3…"},
-  {id:5,name:"5 · ไอออนลบ & EA"}
+const SENT_DEFAULT = (a,b,t) => `${term(a)} มี${t.noun} <SELECT> กว่า ${term(b)}`;
+
+const TASKS = [
+{ id:"1.1", sec:"1. ขนาดอะตอม / รัศมีอะตอม", name:"ขนาดอะตอม ตามหมู่",
+  kind:"elements", def:[3,11,19,37,87], rows:["shells","radius"], key:"radius",
+  noun:"ขนาดอะตอม", words:["ใหญ่","เล็ก"], barColor:"var(--cold)",
+  desc:"เทียบธาตุหมู่ 1 จากบนลงล่าง — จำนวนระดับพลังงานหลักที่เพิ่มขึ้นทำให้ขนาดอะตอมเปลี่ยนไปอย่างไร",
+  reason:`ธาตุใน<strong>หมู่เดียวกัน</strong> เมื่อเลขอะตอมเพิ่มขึ้น <strong>จำนวนระดับพลังงานหลักเพิ่มขึ้น</strong>
+    เวเลนซ์อิเล็กตรอนจึงอยู่ห่างจากนิวเคลียสมากขึ้น และมีอิเล็กตรอนชั้นในคอยกำบัง (shielding) มากขึ้น
+    แรงดึงดูดจากนิวเคลียสที่กระทำต่อเวเลนซ์อิเล็กตรอนจึงลดลง
+    <strong>ขนาดอะตอมจึงใหญ่ขึ้นเมื่อไล่จากบนลงล่างตามหมู่</strong>` },
+
+{ id:"1.2", sec:"1. ขนาดอะตอม / รัศมีอะตอม", name:"ขนาดอะตอม ตามคาบ",
+  kind:"elements", def:[3,4,5,6,7], rows:["protons","radius"], key:"radius",
+  noun:"ขนาดอะตอม", words:["ใหญ่","เล็ก"], barColor:"var(--cold)",
+  desc:"เทียบธาตุคาบ 2 จากซ้ายไปขวา — จำนวนโปรตอนที่เพิ่มขึ้นทำให้ขนาดอะตอมเปลี่ยนไปอย่างไร",
+  reason:`ธาตุใน<strong>คาบเดียวกัน</strong>มีจำนวนระดับพลังงานหลัก<strong>เท่ากัน</strong>
+    แต่จำนวนโปรตอนในนิวเคลียสเพิ่มขึ้นทีละ 1 ส่วนอิเล็กตรอนที่เพิ่มเข้ามาอยู่ใน<strong>ระดับพลังงานเดียวกัน</strong>
+    จึงกำบังกันเองได้น้อย ประจุนิวเคลียสสุทธิที่ดึงเวเลนซ์อิเล็กตรอนจึงมากขึ้นเรื่อยๆ ดึงอิเล็กตรอนเข้าใกล้นิวเคลียสมากขึ้น
+    <strong>ขนาดอะตอมจึงเล็กลงเมื่อไล่จากซ้ายไปขวาตามคาบ</strong>` },
+
+{ id:"2.1", sec:"2. ขนาดไอออน", name:"ขนาดไอออนลบ",
+  kind:"ions", base:7, dir:-1, steps:4, rows:["electrons","radius"], key:"radius",
+  noun:"ขนาด", words:["ใหญ่","เล็ก"], barColor:"var(--cold)",
+  desc:"เติมอิเล็กตรอนให้ไนโตรเจนทีละตัว — จำนวนโปรตอนเท่าเดิมแต่อิเล็กตรอนมากขึ้น ขนาดเปลี่ยนไปอย่างไร",
+  reason:`เมื่ออะตอม<strong>รับอิเล็กตรอน</strong> จำนวนโปรตอนเท่าเดิมแต่อิเล็กตรอนมากขึ้น
+    <strong>แรงผลักระหว่างอิเล็กตรอนจึงเพิ่มขึ้น</strong> และประจุนิวเคลียสถูกเฉลี่ยให้อิเล็กตรอนจำนวนมากขึ้น
+    กลุ่มหมอกอิเล็กตรอนจึงฟุ้งออก <strong>ไอออนลบจึงใหญ่กว่าอะตอมเดิม และยิ่งประจุลบมากยิ่งใหญ่ขึ้น</strong>`,
+  caution:`แต่ <strong>N⁴⁻ ไม่เกิดขึ้นจริง</strong> เพราะ N³⁻ มีการจัดเรียงอิเล็กตรอนเป็น 2, 8 ครบเหมือนแก๊สมีสกุลแล้ว
+    อิเล็กตรอนตัวที่ 4 ต้องเข้าไปอยู่ในระดับพลังงาน <strong>M</strong> ซึ่งอยู่ไกลและถูกกำบังมาก
+    นิวเคลียสที่มีเพียง 7 โปรตอนดึงไว้ไม่อยู่ — ไนโตรเจนจึงรับอิเล็กตรอนได้มากที่สุดแค่ 3 ตัว` },
+
+{ id:"2.2", sec:"2. ขนาดไอออน", name:"ขนาดไอออนบวก",
+  kind:"ions", base:19, dir:1, steps:4, rows:["electrons","radius"], key:"radius",
+  noun:"ขนาด", words:["ใหญ่","เล็ก"], barColor:"var(--cold)",
+  desc:"ดึงอิเล็กตรอนออกจากโพแทสเซียมทีละตัว — จำนวนโปรตอนเท่าเดิมแต่อิเล็กตรอนน้อยลง ขนาดเปลี่ยนไปอย่างไร",
+  reason:`เมื่ออะตอม<strong>เสียอิเล็กตรอน</strong> จำนวนโปรตอนเท่าเดิมแต่อิเล็กตรอนน้อยลง
+    ประจุนิวเคลียสสุทธิที่กระทำต่ออิเล็กตรอนที่เหลือจึงมากขึ้น และแรงผลักระหว่างอิเล็กตรอนลดลง
+    <strong>ไอออนบวกจึงเล็กกว่าอะตอมเดิม และยิ่งประจุบวกมากยิ่งเล็กลง</strong>
+    สังเกตว่าช่วง K → K⁺ ขนาดลดลงมากเป็นพิเศษ เพราะเสียอิเล็กตรอนในวง <strong>N</strong> ไปทั้งวง เหลือเพียง 3 ระดับพลังงาน`,
+  caution:`K²⁺ ถึง K⁴⁺ <strong>มีอยู่จริงในสถานะแก๊ส</strong> (เป็นค่าที่วัด IE₂–IE₄ ได้) แต่ไม่พบในสารประกอบทั่วไป
+    เพราะต้องใช้พลังงานสูงมาก โพแทสเซียมในธรรมชาติจึงเกิดเป็น K⁺ เท่านั้น` },
+
+{ id:"3.1", sec:"3. พลังงานไอออไนเซชัน", name:"IE₁ ตามหมู่",
+  kind:"elements", def:[3,11,19,37], rows:["shells","ie1"], key:"ie1",
+  noun:"ค่า IE₁", words:["สูง","ต่ำ"], barColor:"var(--hot)",
+  desc:"เทียบพลังงานที่ใช้ดึงเวเลนซ์อิเล็กตรอนตัวแรกออกจากธาตุหมู่ 1 จากบนลงล่าง",
+  reason:`ไล่ตามหมู่จากบนลงล่าง เวเลนซ์อิเล็กตรอนอยู่ใน<strong>ระดับพลังงานที่สูงขึ้น</strong>
+    ห่างจากนิวเคลียสมากขึ้น และถูกอิเล็กตรอนชั้นในกำบังมากขึ้น แรงดึงดูดจากนิวเคลียสจึงน้อยลง
+    ดึงอิเล็กตรอนออกได้ง่ายขึ้น <strong>ค่า IE₁ จึงลดลงเมื่อไล่จากบนลงล่างตามหมู่</strong>
+    — สังเกตว่าแนวโน้มนี้<strong>ตรงข้ามกับขนาดอะตอม</strong> ยิ่งอะตอมใหญ่ ยิ่งดึงอิเล็กตรอนออกง่าย` },
+
+{ id:"3.2", sec:"3. พลังงานไอออไนเซชัน", name:"IE ลำดับที่ 1, 2, 3, …",
+  kind:"ieorder", base:11, steps:4, rows:["ieorder","ieval"], key:"ieval",
+  noun:"ค่า IE", words:["สูง","ต่ำ"], barColor:"var(--hot)",
+  sentence:(a,b)=>`ธาตุ ${EL[a.Z].sym} มีค่า IE${sub(a.order)} <SELECT> กว่า IE${sub(b.order)}`,
+  desc:"ดึงอิเล็กตรอนออกจากธาตุเดียวกันทีละตัว แล้วดูว่าค่า IE ลำดับถัดไปเปลี่ยนอย่างไร และกระโดดที่ตรงไหน",
+  reason:`เมื่อดึงอิเล็กตรอนออกไปแล้ว ไอออนที่เหลือมี<strong>ประจุบวกมากขึ้น</strong>ขณะที่อิเล็กตรอนน้อยลง
+    แรงดึงดูดต่ออิเล็กตรอนที่เหลือจึงมากขึ้น <strong>ค่า IE ลำดับถัดไปจึงสูงขึ้นเสมอ</strong>
+    และจะสูงขึ้น<strong>อย่างก้าวกระโดด</strong>เมื่อเริ่มดึงอิเล็กตรอนจากระดับพลังงานที่อยู่ชั้นในถัดไป
+    ตำแหน่งที่กระโดดจึงใช้บอก<strong>จำนวนเวเลนซ์อิเล็กตรอนและหมู่ของธาตุ</strong>ได้` },
+
+{ id:"4", sec:"4. สัมพรรคภาพอิเล็กตรอน", name:"EA ตามหมู่",
+  kind:"elements", def:[3,11,19,37], rows:["shells","ea"], key:"ea",
+  noun:"ค่า EA", words:["สูง","ต่ำ"], barColor:"var(--hot)",
+  desc:"เทียบพลังงานที่คายออกมาเมื่ออะตอมรับอิเล็กตรอน 1 ตัว ในธาตุหมู่ 1 จากบนลงล่าง",
+  reason:`ไล่ตามหมู่จากบนลงล่าง อะตอมมีขนาดใหญ่ขึ้น อิเล็กตรอนที่รับเข้ามาใหม่จะอยู่ใน<strong>ระดับพลังงานที่ห่างนิวเคลียสมากขึ้น</strong>
+    และถูกกำบังมากขึ้น นิวเคลียสจึงดึงดูดอิเล็กตรอนตัวใหม่ได้น้อยลง พลังงานที่คายออกมาเมื่อรับอิเล็กตรอนจึงน้อยลง
+    <strong>ค่า EA จึงมีแนวโน้มลดลงเมื่อไล่จากบนลงล่างตามหมู่</strong>`,
+  caution:`<strong>ข้อควรระวัง:</strong> แนวโน้มของ EA ไม่สม่ำเสมอเท่าสมบัติอื่น เช่นตามคาบ
+    <span class="k">F (328)</span> กลับมีค่า EA <strong>น้อยกว่า</strong> <span class="k">Cl (349)</span>
+    เพราะอะตอม F เล็กมาก อิเล็กตรอนที่เข้ามาใหม่ถูกอิเล็กตรอนเดิมผลักแรง จึงคายพลังงานได้น้อยกว่าที่คาด` },
+
+{ id:"5", sec:"5. อิเล็กโทรเนกาทิวิตี (เพิ่มเติม)", name:"EN ตามหมู่",
+  kind:"elements", def:[3,11,19,37], rows:["shells","en"], key:"en",
+  noun:"ค่า EN", words:["สูง","ต่ำ"], barColor:"var(--hot)",
+  desc:"เทียบความสามารถในการดึงอิเล็กตรอนคู่ร่วมพันธะ ในธาตุหมู่ 1 จากบนลงล่าง (ลองเปลี่ยนเป็นคาบ 2 เพื่อดูแนวโน้มตามคาบ)",
+  reason:`<strong>ตามหมู่จากบนลงล่าง</strong> ขนาดอะตอมใหญ่ขึ้น นิวเคลียสอยู่ห่างจากอิเล็กตรอนคู่ร่วมพันธะมากขึ้น
+    และถูกกำบังมากขึ้น ความสามารถในการดึงอิเล็กตรอนคู่ร่วมพันธะจึงลดลง <strong>ค่า EN ลดลง</strong><br>
+    <strong>ตามคาบจากซ้ายไปขวา</strong> ประจุนิวเคลียสเพิ่มขึ้นขณะที่ขนาดอะตอมเล็กลง <strong>ค่า EN จึงเพิ่มขึ้น</strong>
+    ธาตุที่มีค่า EN สูงที่สุดคือ <span class="k">F (3.98)</span>` }
 ];
-function renderTabs(){
-  document.getElementById('tabs').innerHTML=TABS.map(t=>
-    `<div class="tab ${state.act===t.id?'active':''}" onclick="setAct(${t.id})">${t.name}</div>`).join('');
+
+/* ══════════════════════════════════════════════════════════
+   เกณฑ์ตรวจคำตอบข้อ "เหตุผล"
+   ตรวจว่าคำอธิบายของนักเรียนพูดถึงแนวคิดสำคัญครบหรือไม่ (จับจากคำสำคัญ)
+   ── ไม่ใช่การอ่านเข้าใจความหมาย จึงใช้เป็นเครื่องช่วยตรวจทานเบื้องต้นเท่านั้น ──
+   ══════════════════════════════════════════════════════════ */
+const CONCEPTS = {
+"1.1":[
+ {t:"จำนวนระดับพลังงานหลัก (วง) เพิ่มขึ้น", re:/ระดับพลังงาน|จำนวนวง|วงเพิ่ม|วงมาก|ชั้นพลังงาน|เปลือก|shell/i},
+ {t:"เวเลนซ์อิเล็กตรอนอยู่ห่างนิวเคลียสมากขึ้น", re:/ห่าง|ไกล|ระยะ/},
+ {t:"มีอิเล็กตรอนชั้นในกำบังมากขึ้น", re:/กำบัง|บดบัง|shield|ป้องกัน|ขวาง/i},
+ {t:"แรงดึงดูดจากนิวเคลียสลดลง", re:/แรงดึงดูด|ดึงดูด|ดึง/},
+ {t:"สรุปว่าขนาดอะตอมใหญ่ขึ้น", re:/ใหญ่ขึ้น|โตขึ้น|ขนาดเพิ่ม|ใหญ่กว่า/, concl:true}],
+"1.2":[
+ {t:"จำนวนระดับพลังงานหลักเท่าเดิม", re:/เท่าเดิม|เท่ากัน|คงที่|ไม่เปลี่ยน|เท่ากับ/},
+ {t:"จำนวนโปรตอน / ประจุนิวเคลียสเพิ่มขึ้น", re:/โปรตอน|ประจุ|เลขอะตอม|นิวเคลียส/},
+ {t:"แรงดึงดูดต่อเวเลนซ์อิเล็กตรอนมากขึ้น", re:/แรงดึงดูด|ดึงดูด|ดึง/},
+ {t:"สรุปว่าขนาดอะตอมเล็กลง", re:/เล็กลง|ลดลง|หด|เล็กกว่า/, concl:true}],
+"2.1":[
+ {t:"จำนวนโปรตอนเท่าเดิม", re:/โปรตอน|ประจุบวก|นิวเคลียส/},
+ {t:"รับอิเล็กตรอนเพิ่ม อิเล็กตรอนมากกว่าโปรตอน", re:/รับอิเล็กตรอน|อิเล็กตรอนเพิ่ม|อิเล็กตรอนมาก|เติมอิเล็กตรอน|e-|อิเล็กตรอนมากกว่า/},
+ {t:"แรงผลักระหว่างอิเล็กตรอนเพิ่มขึ้น", re:/ผลัก/},
+ {t:"สรุปว่าไอออนลบมีขนาดใหญ่ขึ้น", re:/ใหญ่ขึ้น|โตขึ้น|ขยาย|ใหญ่กว่า/, concl:true}],
+"2.2":[
+ {t:"เสียอิเล็กตรอน อิเล็กตรอนน้อยกว่าโปรตอน", re:/เสียอิเล็กตรอน|สูญเสีย|อิเล็กตรอนลด|อิเล็กตรอนน้อย|หลุด|ดึงอิเล็กตรอน/},
+ {t:"จำนวนโปรตอนเท่าเดิม", re:/โปรตอน|ประจุบวก|นิวเคลียส/},
+ {t:"แรงดึงดูดต่ออิเล็กตรอนที่เหลือมากขึ้น", re:/แรงดึงดูด|ดึงดูด|ดึง/},
+ {t:"สรุปว่าไอออนบวกมีขนาดเล็กลง", re:/เล็กลง|ลดลง|หด|เล็กกว่า/, concl:true},
+ {t:"เสียอิเล็กตรอนจนหมดหนึ่งระดับพลังงาน ขนาดลดลงมาก", re:/หมดวง|ทั้งวง|หายไปทั้ง|ระดับพลังงานลด|วงลด|วงหาย|เหลือ.*วง/, bonus:true}],
+"3.1":[
+ {t:"เวเลนซ์อิเล็กตรอนอยู่ห่างนิวเคลียสมากขึ้น", re:/ห่าง|ไกล|ระยะ|ระดับพลังงาน/},
+ {t:"มีการกำบังจากอิเล็กตรอนชั้นในมากขึ้น", re:/กำบัง|บดบัง|shield|ขวาง/i},
+ {t:"แรงดึงดูดจากนิวเคลียสน้อยลง", re:/แรงดึงดูด|ดึงดูด|ดึง/},
+ {t:"ดึงอิเล็กตรอนออกง่ายขึ้น ค่า IE₁ จึงลดลง", re:/ง่าย|ลดลง|น้อยลง|ต่ำลง|ใช้พลังงานน้อย/, concl:true}],
+"3.2":[
+ {t:"ไอออนที่เหลือมีประจุบวกมากขึ้น", re:/ประจุบวก|ไอออนบวก|ประจุ.*เพิ่ม|บวกมาก/},
+ {t:"แรงดึงดูดต่ออิเล็กตรอนที่เหลือมากขึ้น", re:/แรงดึงดูด|ดึงดูด|ยึด/},
+ {t:"ค่า IE ลำดับถัดไปสูงขึ้นเสมอ", re:/สูงขึ้น|มากขึ้น|เพิ่มขึ้น|ยากขึ้น/, concl:true},
+ {t:"ค่ากระโดดเมื่อเริ่มดึงจากระดับพลังงานชั้นในถัดไป", re:/กระโดด|เพิ่มมาก|สูงมาก|ชั้นใน|วงใน|ระดับพลังงานใหม่|ต่างวง/},
+ {t:"ใช้บอกจำนวนเวเลนซ์อิเล็กตรอน / หมู่ของธาตุ", re:/เวเลนซ์|วาเลนซ์|หมู่/, bonus:true}],
+"4":[
+ {t:"อะตอมมีขนาดใหญ่ขึ้นตามหมู่", re:/ใหญ่|ขนาด|ระดับพลังงาน/},
+ {t:"อิเล็กตรอนที่รับเข้ามาอยู่ห่างนิวเคลียส / ถูกกำบัง", re:/ห่าง|ไกล|กำบัง|บดบัง|ระยะ/},
+ {t:"นิวเคลียสดึงดูดอิเล็กตรอนตัวใหม่ได้น้อยลง", re:/แรงดึงดูด|ดึงดูด|ดึง/},
+ {t:"คายพลังงานน้อยลง ค่า EA จึงลดลง", re:/คาย|ลดลง|น้อยลง|ต่ำลง/, concl:true}],
+"5":[
+ {t:"อะตอมมีขนาดใหญ่ขึ้น / เวเลนซ์อยู่ห่างนิวเคลียส", re:/ใหญ่|ขนาด|ห่าง|ไกล|ระดับพลังงาน/},
+ {t:"มีการกำบังจากอิเล็กตรอนชั้นใน", re:/กำบัง|บดบัง|shield|ขวาง/i},
+ {t:"ความสามารถดึงอิเล็กตรอนคู่ร่วมพันธะลดลง", re:/คู่ร่วมพันธะ|พันธะ|ดึงอิเล็กตรอน|ดึงดูดอิเล็กตรอน/},
+ {t:"สรุปว่าค่า EN ลดลงตามหมู่", re:/ลดลง|น้อยลง|ต่ำลง/, concl:true}]
+};
+
+/* คำเชื่อมแสดงเหตุผล — ตัวแยก "ท่องหลักการ" ออกจาก "เชื่อมเหตุกับผล" */
+const LINKERS = /เพราะ|เนื่องจาก|จึง|ทำให้|ส่งผล|ดังนั้น|เป็นผลให้|อันเป็นผล|เลยทำให้|ยิ่ง.*ยิ่ง/;
+/* การอ้างหลักฐานเป็นตัวเลขจากตาราง */
+const HASNUM  = /\d/;
+const HASUNIT = /pm|kj|โปรตอน|อิเล็กตรอน|ระดับพลังงาน|วง|ประจุ|เท่า/i;
+
+/* ระดับการสร้างคำอธิบายทางวิทยาศาสตร์ (อิงกรอบ Claim–Evidence–Reasoning) */
+const LEVELS = [
+  {n:0, t:"ยังไม่ได้ให้เหตุผล",        d:"ยังไม่มีคำอธิบาย หรือเป็นการกล่าวซ้ำข้อกล่าวอ้าง"},
+  {n:1, t:"อ้างข้อมูล ยังไม่มีหลักการ", d:"บอกตัวเลข/สิ่งที่สังเกตได้ แต่ยังไม่ได้อธิบายว่าเพราะอะไร"},
+  {n:2, t:"มีหลักการ แต่เชื่อมยังไม่ครบ", d:"อธิบายด้วยหลักการทางวิทยาศาสตร์แล้ว แต่ยังผูกกับหลักฐานไม่ชัด"},
+  {n:3, t:"เชื่อมหลักฐาน–หลักการ–ข้อสรุปได้ครบ", d:"อธิบายครบตามที่คำอธิบายทางวิทยาศาสตร์ควรมี"}
+];
+
+/** ตรวจคำอธิบายของนักเรียน → คะแนน ระดับ และสิ่งที่ยังขาด */
+function gradeReason(taskId, text){
+  const list = CONCEPTS[taskId] || [];
+  const t = (text||"").trim();
+  const core = list.filter(c=>!c.bonus);
+  const hits = list.map(c=>({...c, hit: c.re.test(t)}));
+  const gotCore  = hits.filter(h=>!h.bonus && h.hit).length;
+  const gotBonus = hits.filter(h=>h.bonus && h.hit).length;
+  const coverage = core.length ? gotCore/core.length : 0;
+
+  const hasLink = LINKERS.test(t);
+  const hasNum  = HASNUM.test(t) && HASUNIT.test(t);
+  const hasPrin = hits.some(h=>!h.bonus && !h.concl && h.hit);   // ข้อสรุปไม่นับเป็นหลักการ
+  const short   = t.length < 40;
+
+  let level;
+  if (!t || t.length < 15 || (!hasPrin && !hasNum))      level = 0;
+  else if (!hasPrin)                                     level = 1;
+  else if (hasLink && coverage >= 0.6 && hasNum)         level = 3;
+  else                                                   level = 2;
+
+  let pct = Math.round(coverage*100);
+  if (gotBonus) pct = Math.min(100, pct + 5*gotBonus);
+  if (short) pct = Math.min(pct, 60);
+
+  // สิ่งที่ควรทำต่อ — ชี้ทางเดียวที่สำคัญที่สุด ไม่เฉลยคำตอบ
+  const missing = hits.filter(h=>!h.bonus && !h.hit).map(h=>h.t);
+  let next = "";
+  if (!hasPrin)      next = "คำอธิบายยังเป็นการบอกสิ่งที่เห็น ลองเพิ่มว่า <strong>เพราะอะไร</strong> — นึกถึงประจุในนิวเคลียส ระยะห่าง และการกำบังของอิเล็กตรอนชั้นใน";
+  else if (missing.length) next = `ยังขาด <strong>${missing[0]}</strong>${missing.length>1?` (และอีก ${missing.length-1} ประเด็น)`:""}`;
+  else if (!hasLink) next = "มีครบทุกประเด็นแล้ว แต่ยังเขียนเป็นการเรียงข้อมูล ลองใช้<strong>คำเชื่อมแสดงเหตุผล</strong> เช่น “เพราะ… จึง…” หรือ “ทำให้…” ให้เห็นว่าอะไรเป็นเหตุของอะไร";
+  else if (!hasNum)  next = "ลอง<strong>ยกตัวเลขจากตารางหลักฐาน</strong>มาประกอบ เช่น “จาก 167 pm เป็น 190 pm” จะทำให้คำอธิบายมีหลักฐานรองรับ";
+  else next = "คำอธิบายครบองค์ประกอบแล้ว ลองอ่านทวนว่าเรียงลำดับเหตุผลชัดเจนไหม";
+
+  return {pct, level, hits, hasLink, hasNum, hasPrin, short, gotCore, core:core.length, next, missing};
 }
-function setAct(id){ state.act=id; renderTabs(); render(); }
 
-/* ----- ตัวช่วย scale ร่วมสำหรับ 2 อะตอม ----- */
-function pairScale(...radii){ const mx=Math.max(...radii); return 152/mx; }
-
-/* ---------- กิจกรรม 1 ---------- */
-function renderA1(){
-  const A=state.a1; const ea=BYZ[A.a], eb=BYZ[A.b];
-  const ra=ionRadius(A.a,0).r, rb=ionRadius(A.b,0).r;
-  const sc=pairScale(ra,rb);
-  const slot=(Z,which)=>{
-    const r=ionRadius(Z,0).r; const g=atomSVG(Z,0,sc);
-    return `<div class="card"><h3>${BYZ[Z].th} <span class="pill">${BYZ[Z].sym}</span>
-        <button class="btn sm" onclick="pick1('${which}')">เปลี่ยนธาตุ</button></h3>
-      <div class="atomwrap">${g.svg}</div>
-      ${dataPanel(Z,0,{showIE1:false})}</div>`;
-  };
-  const bigger = ra>rb? ea: (rb>ra? eb: null);
-  let cmp;
-  if(bigger){ const sm=bigger===ea?eb:ea;
-    cmp=`<b style="color:var(--accent2)">${bigger.th} (${bigger.sym})</b> มีรัศมีอะตอมใหญ่กว่า <b>${sm.th} (${sm.sym})</b> — ${ra} pm เทียบ ${rb} pm`;
-  } else cmp=`ทั้งสองธาตุมีรัศมีใกล้เคียงกัน (${ra} pm)`;
-  const same = ea.period===eb.period? "อยู่คาบเดียวกัน → ข้ามคาบไปทางขวา เลขอะตอม(ประจุนิวเคลียส)เพิ่ม ดึงอิเล็กตรอนแน่นขึ้น รัศมีจึงเล็กลง"
-            : ea.group===eb.group? "อยู่หมู่เดียวกัน → ลงล่าง มีระดับพลังงานหลักเพิ่ม รัศมีจึงใหญ่ขึ้น"
-            : "เปรียบเทียบทั้งจำนวนระดับพลังงานหลักและประจุนิวเคลียส";
-  return `
-   <div class="activity-desc">เลือกธาตุครั้งละ 2 ธาตุ (คาบ 1–7, ไม่รวม f) เพื่อ <b>เปรียบเทียบรัศมีอะตอม</b>
-     ดูจำนวนอิเล็กตรอนในแต่ละระดับพลังงานหลัก และประจุบวกในนิวเคลียส (+Z) วงประสีฟ้า = ขอบเขตรัศมีอะตอม (วาดตามมาตราส่วนเดียวกันทั้งคู่)</div>
-   <div class="stage two-col">${slot(A.a,'a')}${slot(A.b,'b')}</div>
-   <div class="cmp" style="margin-top:14px">📏 ${cmp}<div class="note" style="margin-top:6px">${same}</div></div>`;
+/* สถานะแยกตามกิจกรรม เพื่อให้สลับไปมาแล้วไม่หายไป
+   PH = ขั้นที่ทำถึงแล้ว 0 ข้อกล่าวอ้าง · 1 หลักฐาน · 2 เหตุผล */
+const ST = {}, ANS = {}, TBL = {}, RSN = {}, PH = {};
+function blankWork(t){
+  ANS[t.id] = []; TBL[t.id] = {}; PH[t.id] = 0;
+  RSN[t.id] = {text:"", res:null, drafts:[], done:false};
 }
-function pick1(which){ openPicker("เลือกธาตุช่องที่ "+(which==='a'?'1':'2'), Z=>{ state.a1[which]=Z; render(); }); }
-
-/* ---------- กิจกรรม 2 ---------- */
-function renderA2(){
-  const S=state.a2; const e=BYZ[S.Z];
-  const neutralR=ionRadius(S.Z,0).r;
-  const sc=152/neutralR;
-  const g=atomSVG(S.Z,S.charge,sc, S.charge!==0?neutralR:0);
-  const eCount=S.Z-S.charge;
-  // ขอบเขตประจุ: ดึงได้จนเหลือ 1 อิเล็กตรอน, เติมได้จนเต็มออกเตตของวงปัจจุบัน (สูงสุด +? / -? เชิงปฏิบัติ)
-  const canCat = eCount>1 && S.charge< Math.min(S.Z-1, 8);
-  const canAn  = S.charge> -4 && eCount < S.Z+5;
-  const rInfo=ionRadius(S.Z,S.charge);
-  const diff = rInfo.r-neutralR;
-  let trend;
-  if(S.charge>0) trend=`ไอออนบวก: ดึงอิเล็กตรอนออก → แรงดึงต่ออิเล็กตรอนที่เหลือมากขึ้น และอาจลดระดับพลังงานหลัก → <b style="color:var(--pos)">ไอออนเล็กลง</b>`;
-  else if(S.charge<0) trend=`ไอออนลบ: เติมอิเล็กตรอน → แรงผลักระหว่างอิเล็กตรอนมากขึ้น → <b style="color:var(--neg)">ไอออนใหญ่ขึ้น</b>`;
-  else trend=`อะตอมเป็นกลาง (ยังไม่มีประจุ) — กดปุ่มเพื่อสร้างไอออน`;
-  // จุดสังเกตการลดระดับพลังงานหลัก
-  const shNow=peek(S.Z,S.charge).shells.length;
-  const shNeu=peek(S.Z,0).shells.length;
-  const collapsed = shNow<shNeu;
-  return `
-   <div class="activity-desc">เลือกธาตุ แล้ว <b>ดึงอิเล็กตรอนวงนอกออกทีละตัว</b> เพื่อสร้างไอออนบวก (ไอออนเล็กลงเรื่อย ๆ)
-     หรือ <b>เติมอิเล็กตรอนทีละตัว</b> เพื่อสร้างไอออนลบ (ไอออนใหญ่ขึ้นเรื่อย ๆ)
-     เส้น<span class="ghost-key"></span>ประสีเทา = รัศมีอะตอมเดิม (เป็นกลาง) ไว้เทียบขนาด</div>
-   <div class="stage two-col">
-     <div class="card"><h3>${e.th} <span class="pill">${ionLabel(S.Z,S.charge)}</span>
-        <button class="btn sm" onclick="pick2()">เปลี่ยนธาตุ</button></h3>
-       <div class="atomwrap">${g.svg}</div>
-       <div class="row" style="justify-content:center">
-         <button class="btn pos" ${canCat?'':'disabled'} onclick="chg2(1)">➖ ดึง e⁻ ออก (ไอออนบวก)</button>
-         <button class="btn neg" ${canAn?'':'disabled'} onclick="chg2(-1)">➕ เติม e⁻ (ไอออนลบ)</button>
-       </div>
-       <div class="row" style="justify-content:center">
-         <button class="btn sm" onclick="reset2()">↺ กลับเป็นอะตอมกลาง</button></div>
-     </div>
-     <div class="card"><h3>ข้อมูล & การเปลี่ยนแปลงขนาด</h3>
-       ${dataPanel(S.Z,S.charge,{})}
-       <div class="cmp">${trend}</div>
-       <table class="datatable"><tbody>
-         <tr><td>รัศมีอะตอมเดิม (กลาง)</td><td>${neutralR} pm</td></tr>
-         <tr><td>รัศมีปัจจุบัน</td><td>${rInfo.r} pm ${rInfo.real?'<span class="note">(ค่าจริง)</span>':'<span class="approx">≈</span>'}</td></tr>
-         <tr><td>ผลต่าง</td><td style="color:${diff<0?'var(--pos)':diff>0?'var(--neg)':'inherit'}">${diff>0?'+':''}${diff} pm</td></tr>
-       </tbody></table>
-       ${collapsed?`<div class="cmp" style="background:#3a2a14;border-color:var(--accent2);color:#ffe0b0">⚠️ ลดจำนวนระดับพลังงานหลักจาก ${shNeu} เหลือ ${shNow} ระดับ → ขนาดลดลงมาก</div>`:''}
-     </div>
-   </div>`;
+for (const t of TASKS){
+  ST[t.id] = t.kind === "elements" ? {list:t.def.slice()} : {base:t.base, steps:t.steps};
+  blankWork(t);
 }
-function pick2(){ openPicker("เลือกธาตุสำหรับสร้างไอออน", Z=>{ state.a2={Z, charge:0}; render(); }); }
-function chg2(d){ const S=state.a2; S.charge+=d; render(); }
-function reset2(){ state.a2.charge=0; render(); }
+const S = {task:0, reason:false};
 
-/* ---------- กิจกรรม 3 ---------- */
-function renderA3(){
-  const A=state.a3;
-  const slot=(Z,which,removed)=>{
-    const e=BYZ[Z]; const val=valenceCount(Z);
-    const neutralR=ionRadius(Z,0).r; const sc=152/neutralR;
-    const g=atomSVG(Z,removed,sc, removed>0?neutralR:0);
-    const canMore = removed<val; // ดึงเฉพาะเวเลนซ์
-    // log IE ที่ดึงไปแล้ว
-    let log='';
-    for(let k=1;k<=removed;k++){
-      const ie=ieOf(e.sym,k);
-      log+=`<div class="ie"><span class="lbl">IE${sub(k)} (ดึง e⁻ วงนอกตัวที่ ${k})</span><b>${ie!=null?ie.toLocaleString()+' kJ/mol':'—'}</b></div>`;
+/** สร้างอนุกรมสปีชีส์ของกิจกรรมปัจจุบัน → [{Z, e, order?}] */
+function buildSeries(t){
+  const st = ST[t.id];
+  if (t.kind === "elements") return st.list.map(Z => ({Z, e:Z}));
+  if (t.kind === "ions"){
+    const out = [];
+    for (let k=0;k<=st.steps;k++) out.push({Z:st.base, e: st.base - t.dir*k});
+    return out;
+  }
+  const out = [];                      // ieorder: คอลัมน์ k คือไอออนที่กำลังจะเสียอิเล็กตรอนตัวที่ k
+  for (let k=1;k<=st.steps;k++) out.push({Z:st.base, e: st.base-(k-1), order:k});
+  return out;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ตารางธาตุ
+   ══════════════════════════════════════════════════════════ */
+function buildTable(){
+  const grid = {};
+  for (const z of ORDER){ const e = EL[z]; (grid[e.period] = grid[e.period]||{})[e.group] = z; }
+  let h = '<table class="pt"><tbody>';
+  for (let p=1;p<=7;p++){
+    h += "<tr>";
+    for (let g=1;g<=18;g++){
+      const z = grid[p] && grid[p][g];
+      if (z){
+        const e = EL[z];
+        h += `<td><button class="el ${CAT(z)}" data-z="${z}" title="${e.th} · ${e.en} · Z=${z}">${e.sym}</button></td>`;
+      } else if (g===3 && (p===6||p===7)){
+        h += `<td><div class="fgap" title="${p===6?"แลนทาไนด์":"แอกทิไนด์"} (f-block) — ไม่รวมในกิจกรรมนี้">···</div></td>`;
+      } else h += "<td></td>";
     }
-    const nextIE = canMore? ieOf(e.sym, removed+1):null;
-    return `<div class="card"><h3>${e.th} <span class="pill">${ionLabel(Z,removed)}</span>
-        <button class="btn sm" onclick="pick3('${which}')">เปลี่ยนธาตุ</button></h3>
-      <div class="atomwrap">${g.svg}</div>
-      ${dataPanel(Z,removed,{showIE1:true})}
-      <div class="note">เวเลนซ์อิเล็กตรอน = <b>${val}</b> ตัว</div>
-      <button class="btn pos" ${canMore?'':'disabled'} onclick="pull3('${which}')">
-        ➖ ดึงเวเลนซ์ออก 1 ตัว ${nextIE!=null?`(ใช้ IE${sub(removed+1)} = ${nextIE.toLocaleString()} kJ/mol)`:''}</button>
-      <button class="btn sm" onclick="reset3('${which}')">↺ คืนค่า</button>
-      ${log?`<div class="ielog">${log}</div>`:''}</div>`;
-  };
-  const ea=BYZ[A.a], eb=BYZ[A.b];
-  const ie1a=ea.ie1, ie1b=eb.ie1;
-  let cmp='';
-  if(ie1a!=null&&ie1b!=null){
-    const hi=ie1a>ie1b?ea:eb, lo=ie1a>ie1b?eb:ea, hiv=Math.max(ie1a,ie1b), lov=Math.min(ie1a,ie1b);
-    cmp=`⚡ <b style="color:var(--accent2)">${hi.th} (${hi.sym})</b> มี IE₁ สูงกว่า = ${hiv.toLocaleString()} kJ/mol
-       (ดึงเวเลนซ์อิเล็กตรอนออกยากกว่า ${lo.th} = ${lov.toLocaleString()} kJ/mol)`;
+    h += "</tr>";
   }
-  return `
-   <div class="activity-desc">เลือก 2 ธาตุ เปรียบเทียบ <b>พลังงานไอออไนเซชัน (IE)</b> ที่ใช้ดึงเวเลนซ์อิเล็กตรอน (วงนอกสุด) ให้หลุดจากอะตอม
-     กดดึงทีละตัวเพื่อดูค่า IE₁, IE₂, … ของแต่ละธาตุ</div>
-   <div class="stage two-col">${slot(A.a,'a',A.ra)}${slot(A.b,'b',A.rb)}</div>
-   ${cmp?`<div class="cmp" style="margin-top:14px">${cmp}</div>`:''}`;
+  return h + "</tbody></table>";
 }
-function sub(n){ return String(n).split('').map(d=>'₀₁₂₃₄₅₆₇₈₉'[+d]).join(''); }
-function pick3(which){ openPicker("เลือกธาตุช่องที่ "+(which==='a'?'1':'2'), Z=>{ state.a3[which]=Z; state.a3[which==='a'?'ra':'rb']=0; render(); }); }
-function pull3(which){ const key=which==='a'?'ra':'rb'; const Z=state.a3[which]; if(state.a3[key]<valenceCount(Z)) state.a3[key]++; render(); }
-function reset3(which){ state.a3[which==='a'?'ra':'rb']=0; render(); }
 
-/* ---------- กิจกรรม 4 ---------- */
-function renderA4(){
-  const S=state.a4; const e=BYZ[S.Z];
-  const neutralR=ionRadius(S.Z,0).r; const sc=152/neutralR;
-  const g=atomSVG(S.Z,S.removed,sc, S.removed>0?neutralR:0);
-  const maxRemove=Math.min(S.Z-1, 10);
-  const canMore=S.removed<maxRemove;
-  // สร้าง log IE1..IEremoved พร้อมตรวจ "การกระโดด"
-  // จุดกระโดด = IE ลำดับที่เริ่มดึงอิเล็กตรอนจากระดับพลังงานหลักที่ลึกเข้าไป (n วงนอกก่อนดึงลดลง)
-  let log='';
-  const seriesLen=(IES[e.sym]||[e.ie1]).length;
-  const nMax=Math.max(S.removed, Math.min(seriesLen, maxRemove));
-  const rows=[];
-  for(let k=1;k<=nMax;k++){
-    const ie=ieOf(e.sym,k);
-    const nBefore = peek(S.Z,k-1).shells.length;          // n วงนอกก่อนดึงตัวที่ k
-    const nBeforePrev = k>1? peek(S.Z,k-2).shells.length : nBefore;
-    const jump = (k>1) && (nBefore < nBeforePrev);          // เริ่มเจาะเข้าระดับพลังงานหลักวงในใหม่
-    rows.push({k,ie,jump, done:k<=S.removed});
-  }
-  rows.forEach(r=>{
-    if(!r.done && r.ie==null) return; // ไม่แสดงแถวอนาคตที่ไม่มีข้อมูล
-    const cls = r.jump?'ie jump':'ie';
-    const tag = r.jump? ' 🔺เริ่มดึงอิเล็กตรอนระดับพลังงานชั้นใน (พลังงานกระโดดสูงมาก)':'';
-    log+=`<div class="${cls}" style="${r.done?'':'opacity:.5'}">
-      <span class="lbl">IE${sub(r.k)}${tag}</span>
-      <b>${r.ie!=null?r.ie.toLocaleString()+' kJ/mol':'—'}</b></div>`;
-  });
-  const rInfo=ionRadius(S.Z,S.removed);
-  return `
-   <div class="activity-desc">ธาตุชนิดเดียวกัน — <b>ดึงอิเล็กตรอนวงนอกออกทีละตัว</b> เกิดไอออนบวกที่เล็กลงเรื่อย ๆ
-     พร้อมแสดง <b>พลังงานไอออไนเซชันลำดับที่ 1, 2, 3, …</b> สังเกตว่าเมื่อเริ่มดึงอิเล็กตรอน "ชั้นใน" (ลดระดับพลังงานหลัก) ค่า IE จะ<b>กระโดดสูงมาก</b></div>
-   <div class="stage two-col">
-     <div class="card"><h3>${e.th} <span class="pill">${ionLabel(S.Z,S.removed)}</span>
-        <button class="btn sm" onclick="pick4()">เปลี่ยนธาตุ</button></h3>
-       <div class="atomwrap">${g.svg}</div>
-       <div class="row" style="justify-content:center">
-         <button class="btn pos" ${canMore?'':'disabled'} onclick="pull4(1)">➖ ดึงอิเล็กตรอน 1 ตัว</button>
-         <button class="btn sm" onclick="pull4(-1)" ${S.removed>0?'':'disabled'}>↩︎ คืน 1 ตัว</button>
-         <button class="btn sm" onclick="reset4()">↺ เริ่มใหม่</button>
-       </div>
-       <table class="datatable"><tbody>
-         <tr><td>รัศมีอะตอมเดิม</td><td>${neutralR} pm</td></tr>
-         <tr><td>รัศมีไอออนปัจจุบัน</td><td>${rInfo.r} pm</td></tr>
-         <tr><td>ดึงออกแล้ว</td><td>${S.removed} e⁻</td></tr>
-       </tbody></table>
-     </div>
-     <div class="card"><h3>พลังงานไอออไนเซชันลำดับต่าง ๆ</h3>
-       ${dataPanel(S.Z,S.removed,{})}
-       <div class="ielog">${log||'<div class="note">ไม่มีข้อมูล IE</div>'}</div>
-       <div class="note">แถบสีส้ม = จุดที่ดึงอิเล็กตรอนชั้นใน(วงถัดเข้าไป) ทำให้ค่า IE เพิ่มขึ้นอย่างก้าวกระโดด — เป็นหลักฐานของการจัดเรียงอิเล็กตรอนเป็นระดับพลังงาน</div>
-     </div>
-   </div>`;
-}
-function pick4(){ openPicker("เลือกธาตุสำหรับดูIEลำดับต่างๆ", Z=>{ state.a4={Z, removed:0}; render(); }); }
-function pull4(d){ const S=state.a4; S.removed=clamp(S.removed+d,0,Math.min(S.Z-1,10)); render(); }
-function reset4(){ state.a4.removed=0; render(); }
+/* ══════════════════════════════════════════════════════════
+   วาดแบบจำลอง (Bohr)
+   ══════════════════════════════════════════════════════════ */
+const VB = 260, C = VB/2, MAXR = 112;
 
-/* ---------- กิจกรรม 5 ---------- */
-function defaultAnion(Z){ const e=BYZ[Z]; const c=COMMON[e.sym];
-  if(c!=null && c<0) return c;
-  if(e.group===17) return -1; if(e.group===16) return -2; if(e.group===15) return -3;
-  return -1;
-}
-function renderA5(){
-  const A=state.a5;
-  const ra=ionRadius(A.a,A.ca).r, rb=ionRadius(A.b,A.cb).r;
-  const sc=pairScale(ra,rb);
-  const slot=(Z,charge,which)=>{
-    const e=BYZ[Z]; const g=atomSVG(Z,charge,sc);
-    const ea=EA[e.sym];
-    // ดึง e ออกจากไอออนลบ -> charge เพิ่ม (เข้าใกล้ 0)
-    const canPull = charge<0;
-    // พลังงานที่ใช้ดึง e ตัวนอกสุดของไอออนลบ X^- -> X : = EA(X)
-    const pullEnergy = (charge===-1 && ea!=null)? `EA = ${ea} kJ/mol` :
-                       (charge<-1? 'ดึงจากไอออนลบหลายประจุ (พลังงานสูง)':'—');
-    return `<div class="card"><h3>${e.th} <span class="pill">${ionLabel(Z,charge)}</span>
-        <button class="btn sm" onclick="pick5('${which}')">เปลี่ยนไอออน</button></h3>
-      <div class="atomwrap">${g.svg}</div>
-      ${dataPanel(Z,charge,{showEA:true})}
-      <div class="cmp" style="font-size:13px">ดึง e⁻ วงนอกออก 1 ตัว ใช้พลังงาน: <b style="color:var(--accent2)">${pullEnergy}</b>
-        <div class="note" style="margin-top:4px">X⁻ → X + e⁻ ใช้พลังงานเท่ากับ EA ของธาตุนั้น (พลังงานที่ปล่อยตอนรับ e⁻ = พลังงานที่ต้องใช้ตอนดึงกลับ)</div></div>
-      <button class="btn pos" ${canPull?'':'disabled'} onclick="pull5('${which}')">➖ ดึง e⁻ ออก 1 ตัว</button>
-      <button class="btn sm" onclick="reset5('${which}')">↺ คืนค่าไอออนลบเดิม</button></div>`;
+function scopeSVG(slot, scaleRef, interactive, compare, compact){
+  const {Z, e} = slot, el = EL[Z], q = Z - e;
+  const sh = shellsFor(Z, e);
+  const n = sh.length;
+  const cur = radiusOf(Z, e).r;
+  const R = n ? Math.max(26, MAXR * (cur/scaleRef)) : 30;
+  // นิวเคลียสวาดขนาดคงที่ทั้งสองฝั่ง — สิ่งที่เปลี่ยนคือกลุ่มหมอกอิเล็กตรอน ไม่ใช่นิวเคลียส
+  const nucR = Math.min(23, Math.max(10, R*0.45));
+  const ringR = i => n===1 ? R : nucR + (R-nucR)*Math.pow((i+1)/n, .78);
+
+  let s = `<svg viewBox="0 0 ${VB} ${VB}" role="img" aria-label="แบบจำลอง ${ionName(Z,q)}">
+  <defs>
+    <radialGradient id="ng${Z}_${e}"><stop offset="0" stop-color="#FFC9A8"/><stop offset=".55" stop-color="#F07A4E"/><stop offset="1" stop-color="#C2411F"/></radialGradient>
+  </defs>`;
+
+  /* วงอ้างอิง: ขนาดอะตอมกลางเดิม (โหมดไอออน) หรือขนาดของอีกธาตุหนึ่ง (โหมดเปรียบเทียบ)
+     ป้ายวางที่มุม 135° (ล่างซ้าย) เพื่อไม่ให้ชนป้ายจำนวนอิเล็กตรอนซึ่งเรียงอยู่บนแกนตั้งด้านบน */
+  const refRing = (rPm, label, cls, color) => {
+    const Rr = MAXR * (rPm/scaleRef);
+    const lx = C - Rr*0.7071, ly = C + Rr*0.7071;
+    const w = label.length*5.6 + 10;
+    return `<circle class="${cls}" cx="${C}" cy="${C}" r="${Rr.toFixed(1)}"/>
+      <rect x="${(lx-w/2).toFixed(1)}" y="${(ly-7).toFixed(1)}" width="${w.toFixed(1)}" height="14" rx="4" fill="#0A1018" opacity=".88"/>
+      <text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="central"
+            fill="${color}" font-size="9.5" font-family="ui-monospace,Menlo,monospace">${label}</text>`;
   };
-  const ea=BYZ[A.a], eb=BYZ[A.b];
-  const bigger= ra>rb?ea:(rb>ra?eb:null);
-  let cmp= bigger? `<b style="color:var(--accent2)">${ionLabel(bigger.Z, bigger===ea?A.ca:A.cb)}</b> มีขนาดไอออนใหญ่กว่า (${Math.max(ra,rb)} pm เทียบ ${Math.min(ra,rb)} pm)`
-                 : `ไอออนทั้งสองขนาดใกล้เคียงกัน`;
-  return `
-   <div class="activity-desc">เลือก <b>ไอออนลบ</b> ครั้งละ 2 ตัว เปรียบเทียบขนาดไอออน และดู <b>พลังงาน EA</b> ที่เกี่ยวข้องกับการดึงเวเลนซ์อิเล็กตรอนวงนอกสุดออก
-     (วาดทั้งสองด้วยมาตราส่วนเดียวกัน)</div>
-   <div class="stage two-col">${slot(A.a,A.ca,'a')}${slot(A.b,A.cb,'b')}</div>
-   <div class="cmp" style="margin-top:14px">📏 ${cmp}</div>`;
-}
-function pick5(which){
-  openPicker("เลือกธาตุที่จะทำเป็นไอออนลบ", Z=>{
-    state.a5[which]=Z;
-    state.a5[which==='a'?'ca':'cb']=defaultAnion(Z);
-    render();
-  }, Z=>{ const e=BYZ[Z]; return e.group>=14 && e.group<=17 || e.Z===1; });
-}
-function pull5(which){ const ck=which==='a'?'ca':'cb'; if(state.a5[ck]<0) state.a5[ck]++; render(); }
-function reset5(which){ const zk=which; const Z=state.a5[which]; state.a5[which==='a'?'ca':'cb']=defaultAnion(Z); render(); }
+  if (q !== 0)
+    s += refRing(el.r, `${el.sym} ${el.r} pm`, "eghost", "#7E9AB5");
+  else if (compare && Math.abs(compare.r - cur) > 0.5)
+    s += refRing(compare.r, `${compare.sym} ${compare.r} pm`, "ecomp", "#8CA0B4");
 
-/* ---------- render หลัก ---------- */
+  // วงระดับพลังงาน
+  for (let i=0;i<n;i++) s += `<circle class="eshell" cx="${C}" cy="${C}" r="${ringR(i).toFixed(1)}"/>`;
+
+  // นิวเคลียส
+  s += `<circle cx="${C}" cy="${C}" r="${(nucR*1.6).toFixed(1)}" fill="#F07A4E" opacity=".13"/>
+        <circle cx="${C}" cy="${C}" r="${nucR.toFixed(1)}" fill="url(#ng${Z}_${e})"/>
+        <text x="${C}" y="${C}" text-anchor="middle" dominant-baseline="central" fill="#2A0E05"
+              font-size="${(nucR*0.82).toFixed(1)}" font-weight="800"
+              font-family="ui-monospace,Menlo,monospace">+${Z}</text>`;
+
+  /* ระยะห่างเฉลี่ยระหว่างวง — ใช้กำหนดขนาดจุดอิเล็กตรอนและตัดสินว่าจะติดป้ายได้หรือไม่
+     อะตอมที่ถูกวาดเล็ก (เพราะรัศมีจริงเล็ก) ต้องย่อจุดลงด้วย ไม่อย่างนั้นอิเล็กตรอนจะทับกันเป็นก้อน */
+  const gap = n>1 ? (R-nucR)/n : R-nucR;
+
+  // อิเล็กตรอนทุกวง (วาดก่อน เพื่อให้ป้ายอยู่ชั้นบนสุดเสมอ)
+  for (let i=0;i<n;i++){
+    const k = sh[i], sr = ringR(i), outer = (i===n-1);
+    const step = 360/k, a0 = -90 + step/2;
+    const arc = 2*Math.PI*sr/k;
+    const dot = Math.max(1.1, Math.min(4, gap*0.36, arc*0.40));
+    for (let j=0;j<k;j++){
+      const a = (a0 + j*step) * Math.PI/180;
+      const x = C + sr*Math.cos(a), y = C + sr*Math.sin(a);
+      const grab = interactive && outer;
+      s += `<g class="edot${grab?"":" locked"}" ${grab?'data-grab="1"':""} transform="translate(${x.toFixed(1)},${y.toFixed(1)})">
+              <circle r="${Math.max(7,dot*2).toFixed(1)}" fill="transparent"/>
+              <circle r="${(dot*2).toFixed(1)}" fill="#6FE3FF" opacity=".16"/>
+              <circle class="core" r="${dot.toFixed(1)}" fill="#6FE3FF"/>
+            </g>`;
+    }
+  }
+  /* ป้ายชื่อวง + จำนวนอิเล็กตรอน สลับซ้าย/ขวาของแกนตั้ง
+     ถ้าวงชิดกันเกินกว่าป้ายจะอ่านออก ก็ไม่ต้องติด — การจัดเรียงอิเล็กตรอนมีอยู่ในตารางด้านล่างแล้ว */
+  if (gap >= 9 && !compact){
+    for (let i=0;i<n;i++){
+      const lx = C + (i%2 ? 19 : -19), ly = C - ringR(i);
+      s += `<rect x="${lx-16}" y="${(ly-7).toFixed(1)}" width="32" height="14" rx="4" fill="#0A1018" opacity=".9"/>
+            <text x="${lx}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="central"
+                  fill="#9DB4C9" font-size="9.5" font-family="ui-monospace,Menlo,monospace">${SHELL_NAME[i]} ${sh[i]}</text>`;
+    }
+  }
+  return s + "</svg>";
+}
+/* ══════════════════════════════════════════════════════════
+   เรนเดอร์
+   ══════════════════════════════════════════════════════════ */
 function render(){
-  const app=document.getElementById('app');
-  if(state.act===1) app.innerHTML=renderA1();
-  else if(state.act===2) app.innerHTML=renderA2();
-  else if(state.act===3) app.innerHTML=renderA3();
-  else if(state.act===4) app.innerHTML=renderA4();
-  else if(state.act===5) app.innerHTML=renderA5();
+  const t = TASKS[S.task], st = ST[t.id], series = buildSeries(t);
+
+  // แถบกิจกรรม
+  document.getElementById("modes").innerHTML = TASKS.map((x,i)=>
+    `<button class="mode" data-t="${i}" aria-pressed="${i===S.task}"><span class="n">${x.id}</span>${x.name}</button>`
+  ).join("");
+
+  document.getElementById("brief").innerHTML =
+    `<div><p class="bt">${t.sec} — ${t.name}</p><p>${t.desc}</p></div>`;
+
+  // ตารางธาตุ
+  const ptEl = document.getElementById("pt");
+  if (!ptEl.dataset.built){ ptEl.innerHTML = buildTable(); ptEl.dataset.built = "1"; }
+  const isEls = t.kind === "elements";
+  ptEl.querySelectorAll(".el").forEach(b=>{
+    const z = +b.dataset.z;
+    if (isEls){
+      const i = st.list.indexOf(z);
+      if (i>=0) b.dataset.sel = String(i+1); else delete b.dataset.sel;
+    } else {
+      if (z === st.base) b.dataset.sel = "•"; else delete b.dataset.sel;
+    }
+  });
+  document.getElementById("slotpick").innerHTML = isEls
+    ? `<span>คลิกธาตุเพื่อเพิ่มเข้าชุด (สูงสุด 6)</span>
+       <button class="sbtn" data-act="resetlist">คืนค่าชุดตามใบงาน</button>`
+    : `<span>คลิกธาตุเพื่อเปลี่ยนธาตุตั้งต้น</span>`;
+
+  renderSeries(t, st, series);
+  renderClaims(t, series);
+  renderEvidence(t, series);
+  renderReason(t);
 }
-buildPtable();
-renderTabs();
-render();
+
+/** ข้อมูลสมบัติบนการ์ด — นักเรียนอ่านค่าจากตรงนี้ไปกรอกตารางหลักฐานเอง */
+function spData(s, ok){
+  const el = EL[s.Z], q = s.Z - s.e;
+  const r = ok ? radiusOf(s.Z, s.e) : null;
+  const ieLab = s.order ? "IE"+sub(s.order) : "IE₁";
+  const ieVal = s.order ? ieOf(s.Z, s.order) : el.ie[0];
+  const rows = [
+    [q===0?"รัศมีอะตอม":"รัศมีไอออน",
+     ok ? `<b class="big">${r.exact?"":"≈"}${fmtR(r.r)} <span style="font-size:9.5px;font-weight:500">pm</span></b>`
+        : '<b class="big">—</b>'],
+    [ieLab,  `<b>${fmtE(ieVal)}</b>`],
+    ["EN",   `<b>${EN[s.Z]==null ? "—" : EN[s.Z].toFixed(2)}</b>`],
+    ["EA",   `<b>${el.ea==null ? "—" : fmtE(el.ea)}</b>`]
+  ];
+  return `<div class="spdata">${rows.map(([k,v])=>`<div><span>${k}</span>${v}</div>`).join("")}</div>`;
+}
+
+/* ── i. แถวแบบจำลอง ── */
+function renderSeries(t, st, series){
+  const live = series.filter(s=>viable(s.Z,s.e));
+  const scaleRef = Math.max(...live.map(s=>radiusOf(s.Z,s.e).r), 1);
+
+  // การ์ดเล็กลงเมื่อมีหลายตัว ป้ายวงในภาพจะอ่านไม่ออก จึงย้ายไปเป็นบรรทัดข้อความใต้ภาพแทน
+  const compact = series.length > 3;
+
+  const cards = series.map((s,i)=>{
+    const q = s.Z - s.e, ok = viable(s.Z, s.e);
+    const canX = t.kind === "elements" && series.length > 2;
+    const ord = s.order ? `<span class="ord">IE${sub(s.order)}</span>` : "";
+    const sh = shellsFor(s.Z, s.e);
+    return `<div class="sp${ok?"":" dead"}">
+      <div class="cap"><span>${ionName(s.Z,q)}${ord}</span>${
+        canX?`<button class="x" data-act="drop" data-i="${i}" title="เอาออกจากชุด" aria-label="เอา ${EL[s.Z].sym} ออก">×</button>`:""}</div>
+      <div class="scope">${ok ? scopeSVG(s, scaleRef, false, null, compact)
+        : `<svg viewBox="0 0 ${VB} ${VB}"><text x="${C}" y="${C}" text-anchor="middle" dominant-baseline="central"
+             fill="#5C7996" font-size="15" font-family="ui-monospace,Menlo,monospace">ไม่เกิดขึ้น</text></svg>`}</div>
+      <div class="spcfg">${ok
+        ? sh.map((c,j)=>`${SHELL_NAME[j]}<em>${c}</em>`).join("·") + `<span class="pz">+${s.Z}</span>`
+        : '<span class="pz">—</span>'}</div>
+      ${spData(s, ok)}
+      ${ok?"":'<div class="flag">ไม่เกิดขึ้นจริง</div>'}
+    </div>`;
+  }).join("");
+
+  const ctl = t.kind === "elements"
+    ? `<span class="hintline">คลิกธาตุในตารางด้านบนเพื่อเพิ่มเข้าชุด หรือกด × บนการ์ดเพื่อเอาออก</span>`
+    : `<button class="act" data-act="less" ${ST[t.id].steps<=1?"disabled":""}>− ลดขั้น</button>
+       <button class="act" data-act="more" ${ST[t.id].steps>=(t.kind==="ieorder"?Math.min(8,EL[ST[t.id].base].ie.length):6)?"disabled":""}>+ เพิ่มขั้น</button>
+       <span class="hintline" style="margin:0">${t.kind==="ieorder"?"จำนวนลำดับ IE ที่แสดง":"จำนวนขั้นของประจุ"}: <b>${ST[t.id].steps}</b></span>`;
+
+  document.getElementById("seriesbox").innerHTML =
+    `<div class="serieshead"><h2>แบบจำลองอะตอม</h2>
+      <span class="hintline" style="margin:0">ทุกตัวในแถววาดด้วยมาตราส่วนเดียวกัน</span></div>
+     <div class="series">${cards}</div>
+     <div class="seriesctl">${ctl}</div>`;
+}
+
+/** แถบบอกขั้นตอน — ต้องทำ Claim ก่อนจึงเห็นหลักฐาน เพื่อให้ Claim เป็นคำทำนายจริง */
+function stepBar(ph){
+  const names = ["i. ข้อกล่าวอ้าง","ii. หลักฐาน","iii. เหตุผล"];
+  return `<div class="steps">${names.map((n,i)=>
+    `<div class="stepchip ${i<ph?"done":i===ph?"now":""}"><span class="d">${i<ph?"✓":i+1}</span>${n}</div>`
+  ).join("")}</div>`;
+}
+
+/* ── i. ข้อกล่าวอ้าง (ยืนยันแล้วล็อก = บันทึกเป็นคำทำนาย) ── */
+function renderClaims(t, series){
+  const R = ROWS[t.key];
+  const ans = ANS[t.id], ph = PH[t.id], locked = ph >= 1;
+  let correct = 0, answered = 0, total = 0;
+  const rows = [];
+
+  for (let i=0;i<series.length-1;i++){
+    const a = series[i], b = series[i+1];
+    const va = R.val(a), vb = R.val(b);
+    const [L, Rt] = (t.sentence || SENT_DEFAULT)(a, b, t).split("<SELECT>");
+    const pick = ans[i] || "";
+    const opts = ['<option value="">— เลือก —</option>']
+      .concat(t.words.map(w=>`<option value="${w}"${pick===w?" selected":""}>${w}</option>`)).join("");
+
+    // เฉลยถูก/ผิดต่อเมื่อยืนยันแล้ว — ระหว่างทำนายยังไม่บอก
+    let mark = '<span class="mark na"></span>';
+    if (va == null || vb == null){
+      mark = '<span class="mark na">ไม่มีข้อมูลให้ตรวจ</span>';
+    } else {
+      total++;
+      if (pick) answered++;
+      if (locked && pick){
+        const ok = pick === (va > vb ? t.words[0] : t.words[1]);
+        if (ok) correct++;
+        mark = `<span class="mark ${ok?"ok":"no"}">${ok?"✓ ทำนายถูก":"✗ ทำนายไม่ตรงกับหลักฐาน"}</span>`;
+      }
+    }
+    rows.push(`<div class="claim"><span>${L}</span>
+      <select data-ci="${i}"${locked?" disabled":""}>${opts}</select>
+      <span>${Rt}</span>${mark}</div>`);
+  }
+
+  const foot = locked
+    ? `<div class="score">ทำนายถูก <b>${correct}</b> จาก <b>${total}</b> ข้อ — บันทึกไว้แล้ว แก้ไม่ได้</div>
+       ${correct<total?`<div class="locknote">มีข้อที่ทำนายไม่ตรงกับหลักฐาน — นั่นเป็นเรื่องปกติในวิทยาศาสตร์
+         ให้อธิบายในช่องเหตุผลว่าทำไมผลจึงต่างจากที่คิดไว้</div>`:""}`
+    : `<div class="score">เลือกให้ครบ <b>${total}</b> ข้อ แล้วกดยืนยัน — ยังไม่ต้องดูหลักฐาน นี่คือการ<b>ทำนาย</b></div>
+       <div class="rsnbar"><button class="reasonbtn" data-act="lockclaim"${answered<total?" disabled":""}>ยืนยันข้อกล่าวอ้าง แล้วดูหลักฐาน</button>
+       <span class="count">${answered}/${total} ข้อ</span></div>`;
+
+  document.getElementById("claimbox").innerHTML =
+    stepBar(ph) +
+    `<h2>i. ข้อกล่าวอ้าง (Claim)<span class="rn">${locked?"บันทึกเป็นคำทำนายแล้ว":"ทำนายจากแบบจำลองด้านบน"}</span></h2>
+     <div class="claims">${rows.join("")}</div>${foot}`;
+}
+
+/* ── ii. หลักฐาน (ปลดล็อกหลังยืนยันข้อกล่าวอ้าง) ── */
+function renderEvidence(t, series){
+  const box = document.getElementById("evbox");
+  if (PH[t.id] < 1){
+    box.className = "card cer off";
+    box.innerHTML = `<h2>ii. หลักฐาน (Evidence)</h2>
+      <div class="lockmsg"><span class="ic">🔒</span>
+        <span>ยืนยันข้อกล่าวอ้างด้านบนก่อน แล้วตารางหลักฐานจะเปิดให้กรอก —
+        เพื่อให้คำตอบในข้อ i. เป็นการทำนายของตัวเอง ไม่ใช่การอ่านคำตอบมาก่อน</span></div>`;
+    return;
+  }
+  box.className = "card cer";
+  const head = series.map(s=>{
+    const q = s.Z - s.e;
+    const note = s.order ? "IE"+sub(s.order)
+                         : q===0 ? EL[s.Z].th : (q>0 ? "ไอออนบวก" : "ไอออนลบ");
+    return `<th>${ionName(s.Z,q)}<small>${note}</small></th>`;
+  }).join("");
+
+  // ตารางเปล่าให้นักเรียนกรอกเอง — แถวที่เป็นป้ายกำกับ (เช่น ลำดับของ IE) เติมไว้ให้แล้ว
+  const store = TBL[t.id];
+  const body = t.rows.map(id=>{
+    const R = ROWS[id], isKey = id === t.key;
+    if (!store[id]) store[id] = [];
+    const cells = series.map((s,ci)=>{
+      if (R.plain) return `<td>${R.txt(s)}</td>`;
+      const v = store[id][ci] == null ? "" : store[id][ci];
+      return `<td class="fill"><input type="text" inputmode="decimal" value="${v}"
+        data-row="${id}" data-col="${ci}" aria-label="${R.label} ของ ${ionName(s.Z,s.Z-s.e)}"></td>`;
+    }).join("");
+    return `<tr class="${isKey?"key":""}"><th>${R.label}</th>${cells}</tr>`;
+  }).join("");
+
+  // จุดกระโดดของ IE
+  let jump = "";
+  if (t.kind === "ieorder"){
+    const v = series.map(s=>ieOf(s.Z,s.order));
+    let bi = 0, best = 0;
+    for (let i=1;i<v.length;i++){ if (v[i]&&v[i-1]){ const r=v[i]/v[i-1]; if(r>best){best=r;bi=i;} } }
+    const el = EL[ST[t.id].base];
+    if (best > 1.9)
+      jump = `<div class="jumpnote"><span>⚡</span><span>ค่ากระโดดมากที่สุดจาก <strong>IE${sub(bi)}</strong>
+        ไป <strong>IE${sub(bi+1)}</strong> (สูงขึ้น <span class="num">${best.toFixed(1)}</span> เท่า)
+        → <strong>${el.th}</strong> มีเวเลนซ์อิเล็กตรอน <strong>${bi} ตัว</strong> อยู่<strong>หมู่ ${el.group}</strong>
+        จัดเรียงอิเล็กตรอนเป็น ${el.shells.join(", ")}</span></div>`;
+  }
+
+  const filled = Object.values(TBL[t.id]).some(a=>(a||[]).some(v=>String(v||"").trim()));
+  box.innerHTML =
+    `<h2>ii. หลักฐาน (Evidence)<span class="rn">อ่านค่าจากการ์ดด้านบน แล้วกรอกลงตาราง</span></h2>
+     <div class="evwrap"><table class="ev"><thead><tr><th style="text-align:left">รายการ</th>${head}</tr></thead>
+       <tbody>${body}</tbody></table></div>
+     <div class="evnote">
+       <button class="sbtn" data-act="checktbl">ตรวจตาราง</button>
+       <button class="sbtn" data-act="cleartbl">ล้างตาราง</button>
+       ${PH[t.id]<2?`<button class="reasonbtn" data-act="toreason"${filled?"":" disabled"}>กรอกเสร็จแล้ว ไปเขียนเหตุผล</button>`:""}
+       <span id="tblmsg">กราฟด้านล่างจะขยับตามตัวเลขที่กรอก</span>
+     </div>
+     <div id="barbox"></div>${jump}`;
+  updateBars();
+}
+
+/** กราฟแท่งวาดจากตัวเลขที่นักเรียนกรอก ไม่ใช่จากค่าจริง */
+function updateBars(){
+  const t = TASKS[S.task], series = buildSeries(t), box = document.getElementById("barbox");
+  if (!box) return;
+  const col = TBL[t.id][t.key] || [];
+  const vals = series.map((s,i)=>({
+    lab: ionName(s.Z, s.Z-s.e) + (s.order?" IE"+sub(s.order):""),
+    v: parseFloat(String(col[i]||"").replace(/,/g,"")) || 0,
+    raw: col[i] || ""
+  }));
+  if (!vals.some(x=>x.v>0)){
+    box.innerHTML = `<div class="emptybars">กรอกแถว “${ROWS[t.key].label}” ในตาราง แล้วกราฟจะขึ้นให้เทียบกันทันที</div>`;
+    return;
+  }
+  const max = Math.max(...vals.map(x=>x.v), 1);
+  box.innerHTML = `<div class="bars">${vals.map(x=>`
+    <div class="bar"><div class="lab">${x.lab}</div>
+      <div class="track"><div class="fill" style="width:${x.v>0?Math.max(2,(x.v/max)*100):0}%;background:${t.barColor}"></div></div>
+      <div class="val">${x.raw || "—"}</div></div>`).join("")}</div>`;
+}
+
+/** ตรวจตัวเลขในตารางกับค่าจริง (ยอมคลาดเคลื่อน 2% สำหรับค่าที่เป็นค่าประมาณ) */
+function checkTable(){
+  const t = TASKS[S.task], series = buildSeries(t);
+  let ok=0, bad=0, blank=0;
+  document.querySelectorAll("table.ev input").forEach(inp=>{
+    const R = ROWS[inp.dataset.row], s = series[+inp.dataset.col];
+    const truth = R.val(s);
+    const got = parseFloat(inp.value.replace(/,/g,"").replace(/[≈~]/g,""));
+    inp.classList.remove("ok","bad");
+    if (!inp.value.trim()){ blank++; return; }
+    if (truth == null){ inp.classList.add(/ไม่เกิด|-|—/.test(inp.value)?"ok":"bad");
+                        /ไม่เกิด|-|—/.test(inp.value)?ok++:bad++; return; }
+    const tol = Math.max(Math.abs(truth)*0.02, 0.51);
+    if (isFinite(got) && Math.abs(got-truth) <= tol){ inp.classList.add("ok"); ok++; }
+    else { inp.classList.add("bad"); bad++; }
+  });
+  const r = RSN[t.id]; r.tableCorrect = ok; r.tableTotal = ok + bad + blank;
+  reportProgress(t);
+  const msg = document.getElementById("tblmsg");
+  if (msg) msg.innerHTML = `ถูก <b style="color:var(--ok)">${ok}</b> ช่อง · ผิด <b style="color:var(--hot)">${bad}</b> ช่อง`
+    + (blank?` · ยังไม่กรอก <b>${blank}</b> ช่อง`:"");
+}
+
+/* ── iii. เหตุผล : พิมพ์ → ตรวจ → รู้ว่าขาดอะไร → แก้ → ตรวจใหม่ ── */
+function renderReason(t){
+  const box = document.getElementById("reasonbox");
+  const r = RSN[t.id], res = r.res, drafts = r.drafts;
+  // กล่องนี้ถูกวาดใหม่ทุกครั้งที่ตรวจ — จำตำแหน่งเคอร์เซอร์ไว้คืนให้ จะได้พิมพ์ต่อได้เลย
+  const old = document.getElementById("rsn");
+  const keep = old && document.activeElement === old
+    ? {start: old.selectionStart, end: old.selectionEnd} : null;
+  const n = (CONCEPTS[t.id]||[]).filter(c=>!c.bonus).length;
+
+  if (PH[t.id] < 2){
+    box.className = "card cer off";
+    box.innerHTML = `<h2>iii. เหตุผล (Reason)</h2>
+      <div class="lockmsg"><span class="ic">🔒</span>
+        <span>กรอกตารางหลักฐานก่อน แล้วช่องเขียนเหตุผลจะเปิด — คำอธิบายต้องอ้างจากหลักฐานที่อ่านมาแล้ว</span></div>`;
+    return;
+  }
+  box.className = "card cer";
+
+  const lv = res ? LEVELS[res.level] : null;
+  const fb = !res ? "" : `<div class="fb">
+    <div class="fbhead">
+      <div class="fbscore ${res.pct>=80?"g":res.pct>=50?"y":"r"}">${res.pct}<span style="font-size:12px">%</span></div>
+      <div class="fbverdict">ระดับ ${lv.n} — ${lv.t}<small>${lv.d}</small></div>
+    </div>
+    <div class="fblist">${res.hits.map(h=>`
+      <div class="fbitem ${h.hit?"hit":"miss"}">
+        <span class="ic">${h.hit?"✓":"○"}</span>
+        <span>${h.t}${h.bonus?' <em>(ประเด็นเสริม)</em>':""}${h.hit?"":' <em>— ยังไม่ได้กล่าวถึง</em>'}</span>
+      </div>`).join("")}</div></div>
+    <div class="dims">
+      <span class="dim ${res.hasPrin?"on":""}">${res.hasPrin?"✓":"○"} มีหลักการวิทยาศาสตร์</span>
+      <span class="dim ${res.hasLink?"on":""}">${res.hasLink?"✓":"○"} เชื่อมเหตุกับผล</span>
+      <span class="dim ${res.hasNum?"on":""}">${res.hasNum?"✓":"○"} อ้างตัวเลขจากหลักฐาน</span>
+    </div>
+    <div class="nextstep"><strong>ทำต่ออย่างไร:</strong> ${res.next}</div>
+    ${res.short?'<div class="caution">คำตอบสั้นเกินไป ลองเขียนเป็นประโยคอธิบาย ไม่ใช่คำตอบสั้นๆ</div>':""}`;
+
+  // ประวัติการแก้ไข — ให้นักเรียนเห็นว่าตัวเองพัฒนาขึ้น และเป็นหลักฐานให้ครู
+  let hist = "";
+  if (drafts.length){
+    const best = Math.max(...drafts.map(d=>d.pct));
+    const first = drafts[0], last = drafts[drafts.length-1];
+    hist = `<div class="drafts"><h3>ประวัติการแก้ไข (${drafts.length} ครั้ง)</h3>
+      <div class="dlist">${drafts.map((d,i)=>`
+        <div class="d-row ${d.pct===best?"best":""}">
+          <span class="n">ร่างที่ ${i+1}</span>
+          <span class="tr"><span class="tf" style="width:${Math.max(2,d.pct)}%"></span></span>
+          <span class="pc">${d.pct}%</span>
+          <span class="lv">ระดับ ${d.level}</span>
+        </div>`).join("")}</div>
+      ${drafts.length>1 ? `<div class="gain">จากร่างแรก <b>${first.pct}%</b> (ระดับ ${first.level})
+        มาเป็น <b>${last.pct}%</b> (ระดับ ${last.level})${
+        last.newHits && last.newHits.length ? ` — รอบนี้เพิ่มประเด็น <b>${last.newHits.join(", ")}</b>` : ""}</div>` : ""}
+      </div>`;
+  }
+
+  box.innerHTML =
+    `<h2>iii. เหตุผล (Reason)<span class="rn">${r.done?"ส่งแล้ว":"เขียน ตรวจ แล้วแก้จนกว่าจะพอใจ"}</span></h2>
+     <textarea class="rsn" id="rsn"${r.done?" disabled":""} placeholder="อธิบายว่าทำไมจึงเป็นเช่นนั้น — ควรพูดถึงจำนวนระดับพลังงาน ประจุในนิวเคลียส แรงดึงดูด/แรงผลัก และยกตัวเลขจากตารางมาประกอบ">${r.text.replace(/</g,"&lt;")}</textarea>
+     <div class="rsnbar">
+       ${r.done ? `<button class="sbtn" data-act="reopen">แก้ไขอีกครั้ง</button>`
+                : `<button class="reasonbtn" data-act="grade">ตรวจคำตอบ</button>
+                   ${drafts.length?`<button class="sbtn" data-act="final">เข้าใจแล้ว ส่งฉบับนี้</button>`:""}`}
+       <button class="sbtn" data-act="reason"${drafts.length?"":" disabled"} title="${drafts.length?"":"ตรวจคำตอบอย่างน้อย 1 ครั้งก่อน"}">${S.reason?"ซ่อนเฉลย":"ดูเฉลย"}</button>
+       <span class="count" id="rsncount">${r.text.trim().length} ตัวอักษร · มี ${n} ประเด็นที่ควรกล่าวถึง</span>
+     </div>
+     ${r.done?'<div class="locknote">ส่งคำอธิบายฉบับนี้แล้ว — ครูจะเห็นทุกร่างที่แก้มา ไม่ใช่แค่ฉบับสุดท้าย</div>':""}
+     ${fb}${hist}
+     ${S.reason ? `<div class="reasontext">${t.reason}</div>
+                   ${t.caution?`<div class="caution">${t.caution}</div>`:""}` : ""}`;
+
+  if (keep){
+    const ta = document.getElementById("rsn");
+    if (ta && !ta.disabled){ ta.focus(); try { ta.setSelectionRange(keep.start, keep.end); } catch {} }
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   ระบุตัวตน · จำงานไว้ในเครื่อง · ส่งออกไฟล์
+   ใช้ได้โดยไม่ต้องมีเซิร์ฟเวอร์หรือบัญชีผู้ใช้
+   ══════════════════════════════════════════════════════════ */
+const b64e = s => btoa(String.fromCharCode(...new TextEncoder().encode(s)))
+                    .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+const b64d = s => new TextDecoder().decode(Uint8Array.from(
+  atob(s.replace(/-/g,"+").replace(/_/g,"/")), c=>c.charCodeAt(0)));
+
+let ROSTER = null;   // {c:"ม.4/1", s:["ชื่อ", …]} จากลิงก์ที่ครูสร้าง
+let ID = null;       // {name, room, no}
+
+function loadRoster(code){
+  try {
+    const o = JSON.parse(b64d(code));
+    if (o && Array.isArray(o.s) && o.s.length){ ROSTER = o; return true; }
+  } catch {}
+  return false;
+}
+(function initRoster(){
+  const m = /[#&?]r=([A-Za-z0-9_-]+)/.exec(location.hash + location.search);
+  if (m) loadRoster(m[1]);
+})();
+
+const STORE_PREFIX = "krulee.periodic-trends.";
+const idKey = () => STORE_PREFIX + "id";
+const workKey = () => STORE_PREFIX + "work." +
+  (ID ? `${ID.room}|${ID.no}|${ID.name}`.replace(/\s+/g,"") : "guest");
+
+function persist(){
+  if (!ID) return;
+  try { localStorage.setItem(workKey(), JSON.stringify({ST, ANS, TBL, RSN, PH})); } catch {}
+}
+function restoreWork(){
+  try {
+    const raw = localStorage.getItem(workKey());
+    if (!raw) return;
+    const o = JSON.parse(raw);
+    for (const [src, dst] of [[o.ST,ST],[o.ANS,ANS],[o.TBL,TBL],[o.RSN,RSN],[o.PH,PH]])
+      if (src) for (const k in src) dst[k] = src[k];
+  } catch {}
+}
+
+/* ── ประตูระบุตัวตน ── */
+function showGate(){
+  const g = document.createElement("div");
+  g.className = "gate"; g.id = "gate";
+  const hasRoster = !!ROSTER;
+  g.innerHTML = `<div class="box">
+    <h2>ก่อนเริ่มทำกิจกรรม</h2>
+    <p>ระบุตัวเองก่อน เพื่อให้ระบบจำงานของหนูไว้ และครูรู้ว่าเป็นงานของใคร</p>
+    <div id="gateform">${hasRoster ? `
+      <label>ห้อง</label><input value="${ROSTER.c||""}" disabled>
+      <label>ชื่อของหนู</label>
+      <select id="g-pick"><option value="">— เลือกชื่อ —</option>${
+        ROSTER.s.map((n,i)=>`<option value="${i}">${i+1}. ${n}</option>`).join("")}</select>`
+    : `
+      <label>ชื่อ–สกุล</label><input id="g-name" placeholder="เช่น สมชาย ใจดี" autocomplete="name">
+      <label>ห้อง</label><input id="g-room" placeholder="เช่น ม.4/1">
+      <label>เลขที่</label><input id="g-no" type="number" min="1" max="99" placeholder="เช่น 7">`}
+    </div>
+    <button class="go" id="g-go">เริ่มทำกิจกรรม</button>
+    <div class="err" id="g-err" style="display:none"></div>
+    <div id="g-paste" style="display:none">
+      <label>วางรหัสห้องที่ครูให้มา</label>
+      <input id="g-codein" placeholder="วางรหัสตรงนี้">
+      <button class="go" id="g-usecode" style="margin-top:9px">ใช้รหัสนี้</button>
+    </div>
+    <div class="alt">${hasRoster
+      ? `<button id="g-manual">ไม่มีชื่อในรายการ — พิมพ์เอง</button>`
+      : `<button id="g-code">มีรหัสห้องจากครู — วางรหัส</button>`}</div>
+  </div>`;
+  document.body.appendChild(g);
+
+  const err = m => { const e = g.querySelector("#g-err"); e.textContent = m; e.style.display = m ? "" : "none"; };
+
+  g.querySelector("#g-go").onclick = () => {
+    let id;
+    if (ROSTER){
+      const i = g.querySelector("#g-pick")?.value;
+      if (i === "" || i == null) return err("เลือกชื่อของหนูก่อน");
+      id = {name: ROSTER.s[+i], room: ROSTER.c || "", no: +i + 1};
+    } else {
+      const name = g.querySelector("#g-name").value.trim();
+      const room = g.querySelector("#g-room").value.trim();
+      const no   = g.querySelector("#g-no").value.trim();
+      if (!name) return err("ใส่ชื่อ–สกุลก่อน");
+      if (!room) return err("ใส่ห้องก่อน");
+      if (!no)   return err("ใส่เลขที่ก่อน");
+      id = {name, room, no: +no};
+    }
+    ID = id;
+    try { localStorage.setItem(idKey(), JSON.stringify(id)); } catch {}
+    g.remove();
+    restoreWork();
+    renderWho(); render();
+  };
+
+  const manual = g.querySelector("#g-manual");
+  if (manual) manual.onclick = () => { ROSTER = null; g.remove(); showGate(); };
+
+  // ใช้ช่องกรอกในหน้าแทน prompt() เพราะบางสภาพแวดล้อม (รวมถึงหน้า Artifact) ไม่รองรับ
+  const codeBtn = g.querySelector("#g-code");
+  if (codeBtn) codeBtn.onclick = () => {
+    g.querySelector("#g-paste").style.display = "";
+    codeBtn.parentElement.style.display = "none";
+    g.querySelector("#g-codein").focus();
+  };
+  const useCode = g.querySelector("#g-usecode");
+  if (useCode) useCode.onclick = () => {
+    const raw = g.querySelector("#g-codein").value.trim();
+    if (!raw) return err("ยังไม่ได้วางรหัส");
+    const code = (/[#&?]r=([A-Za-z0-9_-]+)/.exec(raw) || [null, raw])[1];  // วางทั้งลิงก์ก็ได้
+    if (!loadRoster(code)) return err("รหัสห้องไม่ถูกต้อง ลองคัดลอกใหม่อีกครั้ง");
+    g.remove(); showGate();
+  };
+}
+
+/* ── แถบผู้ใช้ + ปุ่มส่งงาน ── */
+function renderWho(){
+  const el = document.getElementById("who");
+  if (!el || !ID) return;
+  const total = TASKS.length;
+  const done = TASKS.filter(t => RSN[t.id]?.done).length;
+  el.style.display = "";
+  el.innerHTML = `<span>กำลังทำในนาม <b>${ID.name}</b> · ${ID.room} เลขที่ ${ID.no}</span>
+    <span class="prog">ส่งแล้ว ${done}/${total} กิจกรรม</span>
+    <span class="sp"></span>
+    <span class="savedmsg" id="savedmsg"></span>
+    <button id="w-print">พิมพ์ใบบันทึก</button>
+    <button class="main" id="w-send">ส่งงานให้ครู</button>
+    <button id="w-switch" title="เปลี่ยนเป็นคนอื่น">เปลี่ยนผู้ใช้</button>`;
+  el.querySelector("#w-send").onclick  = exportWork;
+  el.querySelector("#w-print").onclick = printSheet;
+  // ยืนยันสองจังหวะแทน confirm() — ในบางสภาพแวดล้อม confirm() คืน false เงียบๆ ปุ่มจะกดไม่ติด
+  const sw = el.querySelector("#w-switch");
+  sw.onclick = () => {
+    if (sw.dataset.armed){
+      try { localStorage.removeItem(idKey()); } catch {}
+      location.reload(); return;
+    }
+    sw.dataset.armed = "1";
+    sw.textContent = "กดอีกครั้งเพื่อเปลี่ยน";
+    sw.style.borderColor = "var(--hot)"; sw.style.color = "var(--hot)";
+    const msg = el.querySelector("#savedmsg");
+    if (msg){ msg.style.color = "var(--ink-3)"; msg.textContent = "งานของคนเดิมยังเก็บไว้ในเครื่องนี้"; }
+    setTimeout(()=>{ if (!sw.isConnected) return;
+      delete sw.dataset.armed; sw.textContent = "เปลี่ยนผู้ใช้";
+      sw.style.borderColor = ""; sw.style.color = "";
+      if (msg){ msg.textContent = ""; msg.style.color = ""; }
+    }, 5000);
+  };
+}
+
+/** รวมงานทั้ง 8 กิจกรรมเป็นก้อนเดียว */
+function buildRecord(){
+  const tasks = {};
+  for (const t of TASKS){
+    const r = RSN[t.id], d = r.drafts;
+    if (!d.length && PH[t.id] === 0) continue;      // ยังไม่ได้แตะกิจกรรมนี้
+    const levels = d.map(x=>x.level), pcts = d.map(x=>x.pct);
+    tasks[t.id] = {
+      task_name: t.name,
+      ...claimReport(t, buildSeries(t)),
+      table_correct: r.tableCorrect ?? null, table_total: r.tableTotal ?? null,
+      evidence: TBL[t.id],
+      drafts: d.map((x,i)=>({i:i+1, text:x.text, pct:x.pct, level:x.level, at:x.at,
+                             hasLink:x.hasLink, hasNum:x.hasNum, chars:x.chars, newHits:x.newHits})),
+      attempts: d.length,
+      first_level: levels[0] ?? null, first_pct: pcts[0] ?? null,
+      final_level: levels[levels.length-1] ?? null, final_pct: pcts[pcts.length-1] ?? null,
+      best_level: levels.length ? Math.max(...levels) : null,
+      best_pct:   pcts.length   ? Math.max(...pcts)   : null,
+      submitted: !!r.done
+    };
+  }
+  return {v:1, activity:"periodic-trends", activity_name:"ใบกิจกรรม 6 แนวโน้มสมบัติของธาตุ",
+          student:{...ID}, exported_at:new Date().toISOString(), tasks};
+}
+
+const safeName = s => String(s).replace(/[^\p{L}\p{N}_-]+/gu, "-").replace(/^-+|-+$/g, "");
+
+async function exportWork(){
+  const rec = buildRecord();
+  const n = Object.keys(rec.tasks).length;
+  if (!n) return alert("ยังไม่มีงานให้ส่ง — ลองทำกิจกรรมสักข้อก่อน");
+  const filename = `${safeName(rec.student.room)}-${String(rec.student.no).padStart(2,"0")}-${safeName(rec.student.name)}.json`;
+  const data = JSON.stringify(rec, null, 1);
+  const msg = document.getElementById("savedmsg");
+  const say = t => { if (msg){ msg.textContent = t; setTimeout(()=>{ if(msg) msg.textContent=""; }, 4000); } };
+
+  // หน้า Artifact บล็อกการดาวน์โหลดที่หน้าเว็บสั่งเอง ต้องขอผ่านตัวจัดการของระบบ
+  try {
+    const dl = window.claude && await window.claude.use("downloads");
+    if (dl){ await dl.save({filename, data}); say(`ส่งออกแล้ว · ${n} กิจกรรม`); return; }
+  } catch (e) {
+    if (e && e.code === "declined") return;
+    // นอกนั้นตกไปใช้วิธีปกติด้านล่าง
+  }
+  try {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([data], {type:"application/json"}));
+    a.download = filename; document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    say(`ส่งออกแล้ว · ${n} กิจกรรม`);
+  } catch { alert("บันทึกไฟล์ไม่สำเร็จ ลองใช้ปุ่ม “พิมพ์ใบบันทึก” แทน"); }
+}
+
+/** ใบบันทึกผลงานสำหรับพิมพ์ / บันทึกเป็น PDF */
+function printSheet(){
+  const rec = buildRecord();
+  const ids = Object.keys(rec.tasks);
+  if (!ids.length) return alert("ยังไม่มีงานให้พิมพ์");
+  const esc = s => String(s??"").replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));
+  const el = document.getElementById("sheet");
+  el.innerHTML = `<h1>ใบกิจกรรม 6 — แนวโน้มสมบัติของธาตุ</h1>
+    <div class="meta">${esc(rec.student.name)} · ${esc(rec.student.room)} เลขที่ ${esc(rec.student.no)}
+      · พิมพ์เมื่อ ${new Date().toLocaleString("th-TH")}</div>
+    ${ids.map(id=>{
+      const t = rec.tasks[id];
+      return `<div class="pt-task">
+        <h2>${id} ${esc(t.task_name)}</h2>
+        <div class="row">ทำนายถูก ${t.claim_correct}/${t.claim_total}
+          ${t.table_total?` · ตารางหลักฐานถูก ${t.table_correct}/${t.table_total}`:""}
+          · แก้คำอธิบาย ${t.attempts} ครั้ง
+          · ระดับ ${t.first_level ?? "—"} → ${t.final_level ?? "—"}</div>
+        ${t.claims.length?`<table><tr><th>เทียบ</th><th>ทำนาย</th><th>ที่ถูก</th></tr>${
+          t.claims.map(c=>`<tr><td>${esc(c.pair[0])} / ${esc(c.pair[1])}</td><td>${esc(c.pick??"—")}</td><td>${esc(c.right)}${c.ok?" ✓":""}</td></tr>`).join("")}</table>`:""}
+        ${t.drafts.map(d=>`<div class="dr"><b>ร่างที่ ${d.i} — ระดับ ${d.level} (${d.pct}%)</b><br>${esc(d.text)}</div>`).join("")}
+      </div>`;
+    }).join("")}`;
+  window.print();
+}
+
+/* ══════════════════════════════════════════════════════════
+   ส่งผลงานให้หน้าแม่ (LMS) บันทึกลงฐานข้อมูล
+   เปิดเดี่ยวๆ ก็ยังใช้ได้ทุกอย่าง เพียงแต่ไม่บันทึก
+   ══════════════════════════════════════════════════════════ */
+const HOST = window.parent !== window;
+const ACTIVITY_KEY = "periodic-trends";
+let hostInfo = null;
+
+function claimReport(t, series){
+  const R = ROWS[t.key];
+  let correct = 0, total = 0;
+  const out = [];
+  for (let i=0;i<series.length-1;i++){
+    const va = R.val(series[i]), vb = R.val(series[i+1]);
+    if (va == null || vb == null) continue;
+    total++;
+    const right = va > vb ? t.words[0] : t.words[1];
+    const pick = ANS[t.id][i] || null;
+    const ok = pick === right;
+    if (ok) correct++;
+    out.push({pair:[ionName(series[i].Z,series[i].Z-series[i].e),
+                    ionName(series[i+1].Z,series[i+1].Z-series[i+1].e)], pick, right, ok});
+  }
+  return {claims:out, claim_correct:correct, claim_total:total};
+}
+
+/** ส่งสถานะปัจจุบันของกิจกรรมหนึ่งออกไป */
+function reportProgress(t){
+  persist(); renderWho();
+  if (!HOST) return;
+  const r = RSN[t.id], d = r.drafts;
+  const levels = d.map(x=>x.level), pcts = d.map(x=>x.pct);
+  window.parent.postMessage({
+    source:"atomsim", type:"progress",
+    payload:{
+      activity_key: ACTIVITY_KEY,
+      task_id: t.id,
+      task_name: t.name,
+      ...claimReport(t, buildSeries(t)),
+      table_correct: r.tableCorrect ?? null,
+      table_total:   r.tableTotal ?? null,
+      drafts: d.map((x,i)=>({i:i+1, text:x.text, pct:x.pct, level:x.level, at:x.at,
+                             hasLink:x.hasLink, hasNum:x.hasNum, chars:x.chars, newHits:x.newHits})),
+      attempts: d.length,
+      first_level: levels[0] ?? null, first_pct: pcts[0] ?? null,
+      final_level: levels[levels.length-1] ?? null, final_pct: pcts[pcts.length-1] ?? null,
+      best_level: levels.length ? Math.max(...levels) : null,
+      best_pct:   pcts.length   ? Math.max(...pcts)   : null,
+      submitted: !!r.done
+    }
+  }, "*");
+}
+
+/** แถบสถานะการบันทึก — ขึ้นต่อเมื่อหน้าแม่ตอบรับแล้วเท่านั้น
+    (หน้า Artifact ก็อยู่ใน iframe เหมือนกัน แต่ไม่มีใครตอบ จึงต้องไม่ขึ้นแถบค้างไว้) */
+function renderHostBar(){
+  const el = document.getElementById("hostbar");
+  if (!el) return;
+  if (!hostInfo){ el.style.display = "none"; return; }
+  el.style.display = "";
+  el.innerHTML = `<span class="dot"></span>บันทึกงานให้ <b>${hostInfo.name}</b> อัตโนมัติทุกครั้งที่กดตรวจ`;
+}
+
+window.addEventListener("message", ev=>{
+  const m = ev.data;
+  if (!m || m.source !== "atomsim-host") return;
+  if (m.type === "hello"){ hostInfo = m.payload; renderHostBar(); }
+});
+if (HOST) window.parent.postMessage({source:"atomsim", type:"ready"}, "*");
+
+/* ══════════════════════════════════════════════════════════
+   เหตุการณ์
+   ══════════════════════════════════════════════════════════ */
+document.addEventListener("click", ev=>{
+  const t = TASKS[S.task], st = ST[t.id];
+
+  const tab = ev.target.closest(".mode");
+  if (tab){ S.task = +tab.dataset.t; S.reason = false; render(); return; }
+
+  const el = ev.target.closest(".el");
+  if (el){
+    const z = +el.dataset.z;
+    if (t.kind === "elements"){
+      const i = st.list.indexOf(z);
+      if (i >= 0){ if (st.list.length > 2) st.list.splice(i,1); }
+      else if (st.list.length < 6) st.list.push(z);
+      else st.list[st.list.length-1] = z;
+    } else {
+      st.base = z;
+      if (t.kind === "ieorder") st.steps = Math.min(st.steps, EL[z].ie.length);
+    }
+    blankWork(t); S.reason = false;
+    render(); return;
+  }
+
+  const b = ev.target.closest("[data-act]");
+  if (!b) return;
+  const act = b.dataset.act;
+  // การกระทำที่ไม่ต้องวาดใหม่ทั้งหน้า (จะได้ไม่เสียโฟกัส/ข้อความที่พิมพ์ค้างไว้)
+  if (act === "reason"){ S.reason = !S.reason; renderReason(t); return; }
+  if (act === "checktbl"){ checkTable(); return; }
+  if (act === "grade"){
+    const r = RSN[t.id], ta = document.getElementById("rsn");
+    r.text = ta ? ta.value : "";
+    const prev = r.res;
+    r.res = gradeReason(t.id, r.text);
+    // เก็บร่างทุกครั้งที่กดตรวจ — ประวัตินี้คือหลักฐานพัฒนาการที่ครูจะเห็น
+    const before = prev ? prev.hits.filter(h=>h.hit).map(h=>h.t) : [];
+    r.drafts.push({
+      text: r.text, pct: r.res.pct, level: r.res.level, at: new Date().toISOString(),
+      hasLink: r.res.hasLink, hasNum: r.res.hasNum, chars: r.text.trim().length,
+      newHits: r.res.hits.filter(h=>h.hit && !before.includes(h.t)).map(h=>h.t)
+    });
+    renderReason(t); reportProgress(t); return;
+  }
+  if (act === "final"){ RSN[t.id].done = true; renderReason(t); reportProgress(t); return; }
+  if (act === "reopen"){ RSN[t.id].done = false; renderReason(t); reportProgress(t); return; }
+  if (act === "lockclaim"){ PH[t.id] = 1; render(); reportProgress(t); return; }
+  if (act === "toreason"){ PH[t.id] = 2; render(); return; }
+  if (act === "cleartbl"){ TBL[t.id] = {}; render(); return; }
+
+  // เปลี่ยนชุดสปีชีส์ = โจทย์เปลี่ยน ต้องเริ่มกระบวนการใหม่ทั้งหมด
+  if (act === "drop" && st.list.length > 2){ st.list.splice(+b.dataset.i,1); blankWork(t); }
+  else if (act === "resetlist"){ st.list = t.def.slice(); blankWork(t); }
+  else if (act === "more"){ st.steps++; blankWork(t); }
+  else if (act === "less"){ st.steps--; blankWork(t); }
+  else if (act === "clear"){ ANS[t.id] = []; renderClaims(t, buildSeries(t)); return; }
+  else return;
+  S.reason = false;
+  render();
+});
+
+document.addEventListener("change", ev=>{
+  const sel = ev.target.closest(".claim select");
+  if (!sel) return;
+  const t = TASKS[S.task];
+  ANS[t.id][+sel.dataset.ci] = sel.value;
+  renderClaims(t, buildSeries(t));   // วาดใหม่เฉพาะกล่องนี้ ตารางที่กรอกไว้จะได้ไม่ถูกล้างเครื่องหมายตรวจ
+});
+
+/* พิมพ์ในตาราง → เก็บค่าและอัปเดตกราฟทันที โดยไม่วาดตารางใหม่ (โฟกัสจะได้ไม่หลุด) */
+document.addEventListener("input", ev=>{
+  const t = TASKS[S.task];
+  const inp = ev.target.closest("table.ev input");
+  if (inp){
+    const row = inp.dataset.row, col = +inp.dataset.col;
+    (TBL[t.id][row] = TBL[t.id][row] || [])[col] = inp.value;
+    inp.classList.remove("ok","bad");
+    if (row === t.key) updateBars();
+    // ปุ่มไปขั้นถัดไปถูกวาดตอนตารางยังว่าง ต้องปลดล็อกเองเมื่อเริ่มมีข้อมูล
+    const nx = document.querySelector('[data-act="toreason"]');
+    if (nx) nx.disabled = !Object.values(TBL[t.id]).some(a=>(a||[]).some(v=>String(v||"").trim()));
+    return;
+  }
+  if (ev.target.id === "rsn"){
+    RSN[t.id].text = ev.target.value;
+    const c = document.getElementById("rsncount");
+    const n = (CONCEPTS[t.id]||[]).filter(x=>!x.bonus).length;
+    if (c) c.textContent = `${ev.target.value.trim().length} ตัวอักษร · มี ${n} ประเด็นที่ควรกล่าวถึง`;
+  }
+});
+
+try { ID = JSON.parse(localStorage.getItem(idKey()) || "null"); } catch { ID = null; }
+if (ID && ID.name) { restoreWork(); renderWho(); render(); }
+else { render(); showGate(); }
+renderHostBar();
 </script>
-</body>
-</html>

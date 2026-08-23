@@ -1,0 +1,447 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ห้องตรวจงานครูลี</title>
+<style>
+:root{
+  --paper:#F3F6F9; --card:#FFFFFF; --card-2:#EAEFF4;
+  --ink:#121A24; --ink-2:#42525F; --ink-3:#7A8894;
+  --line:#D7DFE7; --line-2:#C2CDD8;
+  --hot:#C94A28; --hot-soft:#FBEAE4;
+  --cold:#0B7E94; --cold-soft:#DFF1F5;
+  --chip:#1B2735; --chip-ink:#F3F6F9; --ok:#2F7D5B;
+  --l0:#8A97A3; --l1:#C77A22; --l2:#2E6F9E; --l3:#2F7D5B;
+  --shadow:0 1px 2px rgba(18,26,36,.06),0 8px 24px -12px rgba(18,26,36,.18);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E141B; --card:#161F29; --card-2:#1D2833;
+    --ink:#E6EDF3; --ink-2:#A9B8C6; --ink-3:#75868F;
+    --line:#26333F; --line-2:#34434F;
+    --hot:#F08560; --hot-soft:#3A2117;
+    --cold:#57C7DE; --cold-soft:#0F2C33;
+    --chip:#DDE6EE; --chip-ink:#0E141B; --ok:#6CC49A;
+    --l0:#7A8894; --l1:#E0A050; --l2:#6BA8D8; --l3:#6CC49A;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E141B; --card:#161F29; --card-2:#1D2833;
+  --ink:#E6EDF3; --ink-2:#A9B8C6; --ink-3:#75868F;
+  --line:#26333F; --line-2:#34434F;
+  --hot:#F08560; --hot-soft:#3A2117; --cold:#57C7DE; --cold-soft:#0F2C33;
+  --chip:#DDE6EE; --chip-ink:#0E141B; --ok:#6CC49A;
+  --l0:#7A8894; --l1:#E0A050; --l2:#6BA8D8; --l3:#6CC49A;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--paper);color:var(--ink);font-size:15px;line-height:1.6;
+  font-family:"Noto Sans Thai","IBM Plex Sans Thai",-apple-system,BlinkMacSystemFont,"Segoe UI",Thonburi,"Leelawadee UI",system-ui,sans-serif;
+}
+.num{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1160px;margin:0 auto;padding:22px 18px 70px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px;margin-bottom:16px}
+h1{font-size:clamp(20px,3vw,26px);font-weight:800;margin:0;letter-spacing:-.02em}
+.sub{color:var(--ink-3);font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tab{
+  font:inherit;font-size:13.5px;padding:8px 15px;border-radius:9px;cursor:pointer;
+  background:var(--card);border:1px solid var(--line);color:var(--ink-2);
+}
+.tab[aria-pressed="true"]{background:var(--chip);border-color:var(--chip);color:var(--chip-ink);font-weight:700}
+.pane{padding:18px 19px 20px}
+h2{font-size:13px;font-weight:700;margin:0 0 12px;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-2)}
+label{display:block;font-size:12px;color:var(--ink-3);margin:12px 0 4px;font-weight:600}
+input,textarea,select{
+  width:100%;box-sizing:border-box;font:inherit;font-size:14px;padding:9px 11px;border-radius:8px;
+  border:1px solid var(--line-2);background:var(--paper);color:var(--ink);
+}
+textarea{resize:vertical;min-height:150px;line-height:1.7}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--cold);outline-offset:-1px}
+.btn{
+  font:inherit;font-size:13.5px;font-weight:600;padding:9px 15px;border-radius:8px;cursor:pointer;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink);
+}
+.btn:hover{background:var(--card-2)}
+.btn.main{background:var(--chip);border-color:var(--chip);color:var(--chip-ink)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:14px}
+.out{
+  margin-top:14px;padding:12px 14px;border-radius:9px;background:var(--card-2);
+  border-left:3px solid var(--ok);font-size:13px;word-break:break-all;
+}
+.out .lnk{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--ink-2);display:block;margin-top:6px;max-height:74px;overflow:auto}
+.note{font-size:12.5px;color:var(--ink-3);margin-top:9px;line-height:1.65}
+
+/* วางไฟล์ */
+.drop{
+  border:2px dashed var(--line-2);border-radius:12px;padding:34px 20px;text-align:center;
+  color:var(--ink-3);font-size:14px;cursor:pointer;transition:background .15s,border-color .15s;
+}
+.drop.over{border-color:var(--cold);background:var(--cold-soft);color:var(--cold)}
+.drop b{color:var(--ink);display:block;font-size:15px;margin-bottom:3px}
+
+/* สรุป */
+.stats{display:flex;flex-wrap:wrap;gap:22px;margin-bottom:6px}
+.stat .k{font-size:11.5px;color:var(--ink-3);letter-spacing:.03em;text-transform:uppercase}
+.stat .v{font-size:22px;font-weight:800;font-family:ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--ink-3);margin-top:4px}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:4px}
+
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px 10px;text-align:left}
+thead th{font-size:11.5px;color:var(--ink-3);font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+tbody tr{border-top:1px solid var(--line)}
+td.n{font-family:ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;text-align:right}
+.scroll{overflow-x:auto}
+
+/* ตารางนักเรียน × กิจกรรม */
+table.grid{border-collapse:separate;border-spacing:3px;width:auto;min-width:600px}
+table.grid th{padding:5px 7px;font-size:11px;text-align:center}
+table.grid td.who{
+  white-space:nowrap;font-size:12.5px;padding-right:12px;position:sticky;left:0;background:var(--card);
+}
+.cell{
+  width:46px;height:34px;border-radius:7px;border:1px solid var(--line);background:transparent;
+  color:var(--ink-3);font:inherit;font-size:12.5px;font-weight:700;cursor:default;
+  font-family:ui-monospace,Menlo,monospace;display:grid;place-items:center;position:relative;
+}
+.cell.has{cursor:pointer}
+.cell .up{position:absolute;top:1px;right:3px;font-size:8px;opacity:.8}
+.cell .dot{position:absolute;bottom:3px;left:4px;width:4px;height:4px;border-radius:50%;background:currentColor}
+.cell:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
+
+/* รายละเอียด */
+.ov{position:fixed;inset:0;background:rgba(10,16,24,.55);display:grid;place-items:center;padding:18px;z-index:50}
+.sheet{
+  background:var(--card);border-radius:14px;border:1px solid var(--line);box-shadow:var(--shadow);
+  max-width:720px;width:100%;max-height:88vh;overflow:auto;padding:20px 22px;
+}
+.sheet h3{margin:0;font-size:17px;font-weight:800}
+.dr{border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin:9px 0}
+.dr .hd{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px;font-size:12px}
+.badge{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px}
+.tag{font-size:10.5px;padding:2px 8px;border-radius:20px;background:var(--card-2);color:var(--ink-3);font-weight:600}
+.when{margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--ink-3)}
+.dtext{font-size:13.5px;line-height:1.7;white-space:pre-wrap}
+.gain{margin-top:10px;font-size:13px;padding:9px 12px;border-radius:8px;background:var(--cold-soft);border-left:3px solid var(--ok)}
+.empty{padding:40px;text-align:center;color:var(--ink-3);font-size:14px}
+.err{color:var(--hot);font-size:13px;margin-top:10px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>ห้องตรวจงานครูลี</h1>
+  <div class="sub">ใบกิจกรรม 6 · แนวโน้มสมบัติของธาตุ · ไม่ต้องล็อกอิน ไม่ต้องมีเซิร์ฟเวอร์</div>
+</header>
+
+<div class="tabs">
+  <button class="tab" data-tab="roster" aria-pressed="true">1 · เตรียมรหัสห้อง</button>
+  <button class="tab" data-tab="collect" aria-pressed="false">2 · รวมผลงานนักเรียน</button>
+</div>
+
+<div class="card pane" id="pane-roster">
+  <h2>สร้างลิงก์ประจำห้อง</h2>
+  <p class="note" style="margin-top:0">
+    วางรายชื่อนักเรียนแล้วกดสร้าง จะได้ลิงก์ที่ฝังรายชื่อไว้ — นักเรียนเปิดลิงก์แล้ว<b>เลือกชื่อจากรายการ</b>
+    ไม่ต้องพิมพ์เอง จึงไม่มีปัญหาสะกดต่างกันหรือชื่อซ้ำ รายชื่ออยู่ในลิงก์เท่านั้น ไม่ถูกส่งไปที่ใด
+  </p>
+  <label>ชื่อห้อง</label>
+  <input id="r-room" placeholder="เช่น ม.4/1" value="ม.4/1">
+  <label>รายชื่อนักเรียน — บรรทัดละคน เรียงตามเลขที่</label>
+  <textarea id="r-names" placeholder="สมชาย ใจดี&#10;สมหญิง รักเรียน&#10;ปิติ ตั้งใจ"></textarea>
+  <label>ที่อยู่ของสื่อ (ลิงก์ที่แจกนักเรียน)</label>
+  <input id="r-base" placeholder="https://…">
+  <div class="row">
+    <button class="btn main" id="r-make">สร้างลิงก์</button>
+    <button class="btn" id="r-copy" disabled>คัดลอกลิงก์</button>
+    <button class="btn" id="r-print" disabled>พิมพ์รายชื่อ + เลขที่</button>
+  </div>
+  <div id="r-out"></div>
+</div>
+
+<div class="card pane" id="pane-collect" style="display:none">
+  <h2>รวมผลงาน</h2>
+  <div class="drop" id="drop">
+    <b>ลากไฟล์งานของนักเรียนมาวางตรงนี้</b>
+    หรือคลิกเพื่อเลือกไฟล์ — เลือกพร้อมกันทั้งห้องได้ (ไฟล์ .json ที่นักเรียนกด “ส่งงานให้ครู”)
+    <input type="file" id="files" accept=".json,application/json" multiple style="display:none">
+  </div>
+  <div id="c-err"></div>
+  <div id="c-out" style="margin-top:18px"></div>
+</div>
+
+<div class="note" style="max-width:760px;margin-top:16px">
+  ระดับการให้เหตุผลที่ระบบให้มาจากการ<b>ตรวจคำสำคัญ</b> ไม่ใช่การอ่านเข้าใจความหมาย
+  ใช้เพื่อคัดกรองว่าควรอ่านงานของใครก่อน — คะแนนเก็บจริงควรมาจากที่ครูอ่านข้อความจริงของนักเรียน ซึ่งแสดงไว้ครบทุกร่าง
+</div>
+</div>
+
+<script>
+const TASKS = [
+  ["1.1","ขนาดอะตอม ตามหมู่"], ["1.2","ขนาดอะตอม ตามคาบ"],
+  ["2.1","ขนาดไอออนลบ"],      ["2.2","ขนาดไอออนบวก"],
+  ["3.1","IE₁ ตามหมู่"],       ["3.2","IE ลำดับที่ 1,2,3,…"],
+  ["4","EA ตามหมู่"],          ["5","EN ตามหมู่"],
+];
+const LV = ["ยังไม่ให้เหตุผล","อ้างข้อมูลล้วน","มีหลักการ","เชื่อมครบ"];
+const lvVar = n => n==null ? "var(--line-2)" : `var(--l${n})`;
+const esc = s => String(s??"").replace(/[<>&]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));
+const b64e = s => btoa(String.fromCharCode(...new TextEncoder().encode(s)))
+                    .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+const fmtWhen = s => s ? new Date(s).toLocaleString("th-TH",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "—";
+
+/* ── แท็บ ── */
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-pressed", String(x===b)));
+  document.getElementById("pane-roster").style.display  = b.dataset.tab==="roster"  ? "" : "none";
+  document.getElementById("pane-collect").style.display = b.dataset.tab==="collect" ? "" : "none";
+});
+
+/* ══════════════ 1 · เตรียมรหัสห้อง ══════════════ */
+const baseInput = document.getElementById("r-base");
+/* เดาลิงก์หน้านักเรียนจากที่อยู่ของหน้านี้
+   · เสิร์ฟคู่กันตอนพัฒนา  →  …/sim/atom-model.html
+   · GitHub Pages          →  โฟลเดอร์เดียวกัน ซึ่งเสิร์ฟ index.html ให้เอง
+   · Artifact              →  เดาไม่ได้ ต้องให้ครูวางเอง */
+const here = location.href.split(/[#?]/)[0];
+const guess = /\/sim\/teacher-console\.html$/.test(here)
+  ? here.replace(/teacher-console\.html$/, "atom-model.html")
+  : /teacher-console\.html$/.test(here)
+    ? here.replace(/teacher-console\.html$/, "")
+    : "";
+if (guess) baseInput.value = guess;
+else {
+  baseInput.value = "";
+  baseInput.placeholder = "วางลิงก์กิจกรรมที่แจกนักเรียน (หน้าแบบจำลองอะตอม)";
+  baseInput.insertAdjacentHTML("afterend",
+    `<div class="note">เปิดหน้ากิจกรรมของนักเรียนแล้วคัดลอกลิงก์จากแถบที่อยู่มาวางตรงนี้ครั้งเดียว</div>`);
+}
+let madeLink = "", madeRoster = null;
+
+document.getElementById("r-make").onclick = () => {
+  const room  = document.getElementById("r-room").value.trim();
+  const names = document.getElementById("r-names").value.split("\n")
+                  .map(s=>s.replace(/^\s*\d+[.)\s]\s*/,"").trim()).filter(Boolean);
+  const out = document.getElementById("r-out");
+  if (!names.length){ out.innerHTML = `<div class="err">ยังไม่ได้ใส่รายชื่อนักเรียน</div>`; return; }
+  const base = baseInput.value.trim().split("#")[0];
+  if (!base){ out.innerHTML = `<div class="err">ใส่ที่อยู่ของสื่อก่อน</div>`; return; }
+
+  madeRoster = {c:room, s:names};
+  madeLink = base + "#r=" + b64e(JSON.stringify(madeRoster));
+  out.innerHTML = `<div class="out"><b>ลิงก์ประจำห้อง ${esc(room)} · ${names.length} คน</b>
+    <span class="lnk">${esc(madeLink)}</span></div>
+    <div class="note">แจกลิงก์นี้ให้นักเรียนแทนลิงก์เดิม — ถ้าลิงก์ยาวเกินไปสำหรับช่องทางที่ใช้
+    ให้นักเรียนเปิดลิงก์เดิมแล้วกด “มีรหัสห้องจากครู” เพื่อวางรหัสส่วนที่อยู่หลัง <span class="num">#r=</span> แทนได้</div>`;
+  document.getElementById("r-copy").disabled = false;
+  document.getElementById("r-print").disabled = false;
+};
+
+document.getElementById("r-copy").onclick = async () => {
+  const b = document.getElementById("r-copy");
+  try {
+    await navigator.clipboard.writeText(madeLink);
+    b.textContent = "คัดลอกแล้ว";
+  } catch {
+    // เลือกข้อความให้แทน แล้วให้ครูกดคัดลอกเอง (prompt() ใช้ไม่ได้ทุกที่)
+    const el = document.querySelector("#r-out .lnk");
+    if (el){
+      const r = document.createRange(); r.selectNodeContents(el);
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      el.scrollIntoView({block:"center"});
+    }
+    b.textContent = "เลือกข้อความให้แล้ว — กด Ctrl/⌘+C";
+  }
+  setTimeout(()=>b.textContent="คัดลอกลิงก์", 3500);
+};
+
+document.getElementById("r-print").onclick = () => {
+  if (!madeRoster) return;
+  const w = window.open("", "_blank");
+  if (!w) return alert("เบราว์เซอร์บล็อกหน้าต่างใหม่ — อนุญาต pop-up แล้วลองอีกครั้ง");
+  w.document.write(`<meta charset="utf-8"><title>รายชื่อ ${esc(madeRoster.c)}</title>
+    <style>body{font-family:system-ui,"Noto Sans Thai",sans-serif;padding:26px}
+    h1{font-size:18px;margin:0 0 12px}table{border-collapse:collapse;font-size:13px}
+    td,th{border:1px solid #bbb;padding:5px 12px}th{background:#eee}</style>
+    <h1>${esc(madeRoster.c)} — เลขที่สำหรับกิจกรรมแนวโน้มสมบัติของธาตุ</h1>
+    <table><tr><th>เลขที่</th><th>ชื่อ–สกุล</th></tr>
+    ${madeRoster.s.map((n,i)=>`<tr><td style="text-align:center">${i+1}</td><td>${esc(n)}</td></tr>`).join("")}
+    </table>`);
+  w.document.close(); w.focus(); w.print();
+};
+
+/* ══════════════ 2 · รวมผลงาน ══════════════ */
+const drop = document.getElementById("drop"), fileInput = document.getElementById("files");
+let RECORDS = [];
+
+drop.onclick = () => fileInput.click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); addFiles(e.dataTransfer.files); };
+fileInput.onchange = () => addFiles(fileInput.files);
+
+async function addFiles(list){
+  const errs = [];
+  for (const f of list){
+    try {
+      const rec = JSON.parse(await f.text());
+      if (rec.activity !== "periodic-trends" || !rec.student) { errs.push(`${f.name} — ไม่ใช่ไฟล์งานของกิจกรรมนี้`); continue; }
+      const key = `${rec.student.room}|${rec.student.no}|${rec.student.name}`;
+      const i = RECORDS.findIndex(r => r.key === key);
+      const item = {key, file:f.name, ...rec};
+      // ไฟล์ใหม่กว่าทับของเดิมคนเดียวกัน
+      if (i >= 0) { if ((rec.exported_at||"") >= (RECORDS[i].exported_at||"")) RECORDS[i] = item; }
+      else RECORDS.push(item);
+    } catch { errs.push(`${f.name} — อ่านไฟล์ไม่ได้`); }
+  }
+  RECORDS.sort((a,b)=>(a.student.no??999)-(b.student.no??999));
+  document.getElementById("c-err").innerHTML = errs.length ? `<div class="err">${errs.map(esc).join("<br>")}</div>` : "";
+  renderCollect();
+}
+
+function renderCollect(){
+  const out = document.getElementById("c-out");
+  if (!RECORDS.length){ out.innerHTML = ""; return; }
+
+  const cell = (r, id) => r.tasks?.[id] ?? null;
+  const allT = [];
+  for (const r of RECORDS) for (const [id] of TASKS){ const t = cell(r,id); if (t) allT.push(t); }
+  const lvOf = t => t.best_level;
+  const avg = a => a.length ? (a.reduce((x,y)=>x+y,0)/a.length) : null;
+
+  const overall = avg(allT.map(lvOf).filter(x=>x!=null));
+  const grew = allT.filter(t => t.first_level!=null && t.final_level > t.first_level).length;
+
+  const stats = `<div class="stats">
+    <div class="stat"><div class="k">นักเรียน</div><div class="v">${RECORDS.length}</div></div>
+    <div class="stat"><div class="k">กิจกรรมที่ทำ</div><div class="v">${allT.length}</div></div>
+    <div class="stat"><div class="k">ระดับเฉลี่ย</div><div class="v">${overall==null?"—":overall.toFixed(1)}</div></div>
+    <div class="stat"><div class="k">แก้แล้วดีขึ้น</div><div class="v">${grew}</div></div>
+  </div>
+  <div class="legend">${LV.map((l,i)=>`<span><i style="background:var(--l${i})"></i><b>${i}</b> ${l}</span>`).join("")}</div>`;
+
+  const taskRows = TASKS.map(([id,name])=>{
+    const ts = RECORDS.map(r=>cell(r,id)).filter(Boolean);
+    const lv = ts.map(lvOf).filter(x=>x!=null);
+    const a = avg(lv);
+    return `<tr><td><b class="num">${id}</b> ${esc(name)}</td>
+      <td class="n">${ts.length}/${RECORDS.length}</td>
+      <td class="n" style="color:${a==null?"var(--ink-3)":lvVar(Math.round(a))};font-weight:700">${a==null?"—":a.toFixed(1)}</td>
+      <td class="n">${lv.filter(x=>x===3).length}</td>
+      <td class="n">${ts.length?(avg(ts.map(t=>t.attempts||0))).toFixed(1):"—"}</td></tr>`;
+  }).join("");
+
+  const grid = `<table class="grid"><thead><tr><th style="text-align:left">นักเรียน</th>
+    ${TASKS.map(([id,n])=>`<th title="${esc(n)}">${id}</th>`).join("")}</tr></thead><tbody>
+    ${RECORDS.map((r,ri)=>`<tr><td class="who">${r.student.no?r.student.no+". ":""}${esc(r.student.name)}</td>
+      ${TASKS.map(([id])=>{
+        const t = cell(r,id);
+        if (!t) return `<td><div class="cell">·</div></td>`;
+        const lv = lvOf(t), up = t.first_level!=null && t.final_level>t.first_level;
+        return `<td><button class="cell has" data-r="${ri}" data-t="${id}"
+          title="ระดับ ${lv} · แก้ ${t.attempts} ครั้ง"
+          style="border-color:color-mix(in srgb,${lvVar(lv)} 55%,transparent);
+                 background:color-mix(in srgb,${lvVar(lv)} 16%,transparent);color:${lvVar(lv)}">
+          ${lv}${up?'<span class="up">↑</span>':""}${t.submitted?'<span class="dot"></span>':""}</button></td>`;
+      }).join("")}</tr>`).join("")}
+    </tbody></table>
+    <div class="note">↑ = ระดับดีขึ้นจากร่างแรก · จุด = นักเรียนกดส่งแล้ว · คลิกช่องเพื่ออ่านทุกร่าง</div>`;
+
+  out.innerHTML = `${stats}
+    <div style="margin-top:20px"><h2>ภาพรวมรายกิจกรรม</h2><div class="scroll"><table>
+      <thead><tr><th>กิจกรรม</th><th style="text-align:right">ทำแล้ว</th>
+        <th style="text-align:right">ระดับเฉลี่ย</th><th style="text-align:right">ถึงระดับ 3</th>
+        <th style="text-align:right">แก้เฉลี่ย</th></tr></thead><tbody>${taskRows}</tbody></table></div></div>
+    <div style="margin-top:22px"><h2>รายบุคคล</h2><div class="scroll">${grid}</div></div>
+    <div class="row"><button class="btn" id="c-csv">บันทึกสรุปเป็นตาราง (CSV)</button>
+      <button class="btn" id="c-clear">ล้างรายการ</button></div>`;
+
+  out.querySelectorAll(".cell.has").forEach(b => b.onclick = () => openDetail(+b.dataset.r, b.dataset.t));
+  out.querySelector("#c-csv").onclick = exportCSV;
+  out.querySelector("#c-clear").onclick = () => { RECORDS = []; renderCollect(); document.getElementById("c-err").innerHTML=""; };
+}
+
+function openDetail(ri, taskId){
+  const r = RECORDS[ri], t = r.tasks[taskId];
+  const name = (TASKS.find(x=>x[0]===taskId)||[])[1] ?? "";
+  const drafts = t.drafts || [];
+  const first = drafts[0], last = drafts[drafts.length-1];
+
+  const ov = document.createElement("div");
+  ov.className = "ov";
+  ov.innerHTML = `<div class="sheet">
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">
+      <div style="flex:1">
+        <div style="font-size:11.5px;color:var(--ink-3);letter-spacing:.03em">${esc(taskId)} · ${esc(name)}</div>
+        <h3>${esc(r.student.name)}</h3>
+        <div style="font-size:12.5px;color:var(--ink-3)">${esc(r.student.room)} เลขที่ ${esc(r.student.no)} · ไฟล์ ${esc(r.file)}</div>
+      </div>
+      <button class="btn" id="d-close">ปิด</button>
+    </div>
+    <div class="stats" style="gap:18px">
+      <div class="stat"><div class="k">แก้ทั้งหมด</div><div class="v">${t.attempts||0}</div></div>
+      <div class="stat"><div class="k">ร่างแรก</div><div class="v">${t.first_level ?? "—"}</div></div>
+      <div class="stat"><div class="k">ร่างสุดท้าย</div><div class="v">${t.final_level ?? "—"}</div></div>
+      <div class="stat"><div class="k">ทำนายถูก</div><div class="v">${t.claim_correct??0}/${t.claim_total??0}</div></div>
+      <div class="stat"><div class="k">ตารางถูก</div><div class="v">${t.table_total?`${t.table_correct}/${t.table_total}`:"—"}</div></div>
+    </div>
+    ${(t.claims||[]).length?`<h2 style="margin-top:18px">คำทำนายก่อนเห็นหลักฐาน</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">${t.claims.map(c=>`
+        <span class="tag" style="background:${c.ok?"var(--cold-soft)":"var(--hot-soft)"};color:${c.ok?"var(--ok)":"var(--hot)"}">
+        ${esc(c.pair?.[0])}/${esc(c.pair?.[1])}: ${esc(c.pick??"—")}${c.ok?" ✓":" (ที่ถูก "+esc(c.right)+")"}</span>`).join("")}</div>`:""}
+    <h2 style="margin-top:18px">ทุกร่างที่เขียน</h2>
+    ${drafts.length ? drafts.map(d=>`<div class="dr" style="border-left:3px solid ${lvVar(d.level)}">
+      <div class="hd"><b>ร่างที่ ${d.i}</b>
+        <span class="badge" style="background:color-mix(in srgb,${lvVar(d.level)} 16%,transparent);color:${lvVar(d.level)}">ระดับ ${d.level} · ${d.pct}%</span>
+        ${d.hasLink?'<span class="tag">เชื่อมเหตุผล</span>':""}${d.hasNum?'<span class="tag">อ้างตัวเลข</span>':""}
+        <span class="when">${fmtWhen(d.at)} · ${d.chars} ตัวอักษร</span></div>
+      <div class="dtext">${esc(d.text) || "<i style='color:var(--ink-3)'>(ว่าง)</i>"}</div>
+      ${d.newHits?.length?`<div style="margin-top:6px;font-size:11.5px;color:var(--ink-3)">เพิ่มจากร่างก่อน: ${esc(d.newHits.join(", "))}</div>`:""}
+    </div>`).join("") : `<div class="empty">ยังไม่มีร่าง</div>`}
+    ${drafts.length>1?`<div class="gain">จากร่างแรก <b>${first.pct}%</b> (ระดับ ${first.level})
+      มาเป็น <b>${last.pct}%</b> (ระดับ ${last.level})</div>`:""}
+  </div>`;
+  ov.onclick = e => { if (e.target === ov) ov.remove(); };
+  ov.querySelector("#d-close").onclick = () => ov.remove();
+  document.body.appendChild(ov);
+}
+
+/* ── บันทึกสรุปเป็นตาราง ── */
+async function exportCSV(){
+  const head = ["ห้อง","เลขที่","ชื่อ","กิจกรรม","ทำนายถูก","ทำนายทั้งหมด","ตารางถูก","ตารางทั้งหมด",
+                "จำนวนครั้งที่แก้","ระดับร่างแรก","ระดับร่างสุดท้าย","ระดับดีที่สุด","ส่งแล้ว","คำอธิบายฉบับล่าสุด"];
+  const rows = [head];
+  for (const r of RECORDS)
+    for (const [id] of TASKS){
+      const t = r.tasks?.[id]; if (!t) continue;
+      const last = (t.drafts||[]).slice(-1)[0];
+      rows.push([r.student.room, r.student.no, r.student.name, id,
+        t.claim_correct??"", t.claim_total??"", t.table_correct??"", t.table_total??"",
+        t.attempts??"", t.first_level??"", t.final_level??"", t.best_level??"",
+        t.submitted?"ใช่":"ไม่", (last?.text||"").replace(/\s+/g," ")]);
+    }
+  const csv = "﻿" + rows.map(r => r.map(c => `"${String(c??"").replace(/"/g,'""')}"`).join(",")).join("\r\n");
+  const stamp = new Date().toISOString().slice(0,10);
+  const tryDownload = async (filename, mime) => {
+    try {
+      const dl = window.claude && await window.claude.use("downloads");
+      if (dl){ await dl.save({filename, data:csv}); return true; }
+    } catch(e){
+      if (e && e.code === "declined") return true;
+      if (e && e.code === "extension_not_enabled") return false;
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], {type:mime}));
+    a.download = filename; document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    return true;
+  };
+  // .csv อยู่ในชุดนามสกุลเสริม บางที่อาจไม่เปิดให้ใช้ ถ้าไม่ผ่านค่อยลง .txt แทน (วางในชีตได้เหมือนกัน)
+  if (!await tryDownload(`สรุปกิจกรรม6-${stamp}.csv`, "text/csv"))
+    await tryDownload(`สรุปกิจกรรม6-${stamp}.txt`, "text/plain");
+}
+</script>

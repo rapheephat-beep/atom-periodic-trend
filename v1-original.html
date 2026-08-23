@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>แบบจำลองอะตอม & แนวโน้มในตารางธาตุ — เคมี ม.4</title>
+<style>
+  :root{
+    --bg:#0f1729; --panel:#172238; --panel2:#1f2d49; --line:#2c3b5c;
+    --ink:#eaf0fb; --muted:#9fb0cf; --accent:#4fc3f7; --accent2:#ffb74d;
+    --pos:#ff6b6b; --neg:#5c7cfa; --good:#51cf66; --warn:#ffd43b;
+    --nucleus:#ff7a59; --shellc:#3a4d77;
+    --s-block:#4a6fb5; --p-block:#3f9e7e; --d-block:#9a6fc0; --noble:#c06f9a;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:"Sarabun","Segoe UI",system-ui,-apple-system,sans-serif;
+    background:linear-gradient(160deg,#0f1729,#131d33); color:var(--ink);
+    line-height:1.45; padding-bottom:40px;
+  }
+  header{
+    padding:16px 20px; background:rgba(15,23,41,.85); backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line); position:sticky; top:0; z-index:50;
+  }
+  header h1{margin:0; font-size:20px; letter-spacing:.2px}
+  header .sub{color:var(--muted); font-size:13px; margin-top:2px}
+  .tabs{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px}
+  .tab{
+    background:var(--panel); border:1px solid var(--line); color:var(--muted);
+    padding:8px 14px; border-radius:10px 10px 0 0; cursor:pointer; font-size:14px;
+    font-weight:600; transition:.15s; user-select:none;
+  }
+  .tab:hover{color:var(--ink); border-color:var(--accent)}
+  .tab.active{background:var(--accent); color:#06243a; border-color:var(--accent)}
+  main{max-width:1180px; margin:0 auto; padding:18px 16px}
+  .activity-desc{
+    background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:10px; margin-bottom:16px; font-size:14px; color:var(--muted);
+  }
+  .activity-desc b{color:var(--ink)}
+  .stage{display:grid; gap:16px}
+  .two-col{grid-template-columns:1fr 1fr}
+  @media(max-width:820px){ .two-col{grid-template-columns:1fr} }
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:14px; display:flex; flex-direction:column; gap:10px;
+  }
+  .card h3{margin:0; font-size:16px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+  .pill{
+    font-size:12px; font-weight:700; padding:2px 9px; border-radius:999px;
+    background:var(--panel2); border:1px solid var(--line); color:var(--muted);
+  }
+  .btn{
+    background:var(--panel2); border:1px solid var(--line); color:var(--ink);
+    padding:8px 12px; border-radius:9px; cursor:pointer; font-size:14px; font-weight:600;
+    font-family:inherit; transition:.12s;
+  }
+  .btn:hover:not(:disabled){border-color:var(--accent); background:#243760}
+  .btn:disabled{opacity:.4; cursor:not-allowed}
+  .btn.primary{background:var(--accent); color:#06243a; border-color:var(--accent)}
+  .btn.pos{background:#3a1f2a; border-color:var(--pos); color:#ffd0d0}
+  .btn.neg{background:#1f2742; border-color:var(--neg); color:#cdd8ff}
+  .btn.sm{padding:5px 9px; font-size:13px}
+  .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .atomwrap{display:flex; flex-direction:column; align-items:center; gap:6px}
+  svg.atom{width:100%; max-width:360px; height:auto; touch-action:none}
+  .datatable{width:100%; border-collapse:collapse; font-size:13.5px}
+  .datatable td{padding:5px 8px; border-bottom:1px solid var(--line)}
+  .datatable td:first-child{color:var(--muted)}
+  .datatable td:last-child{text-align:right; font-weight:600; font-variant-numeric:tabular-nums}
+  .shelllist{display:flex; flex-direction:column; gap:4px; font-size:13px}
+  .shellrow{display:flex; justify-content:space-between; gap:10px; padding:3px 8px;
+    background:var(--panel2); border-radius:7px}
+  .shellrow.valence{outline:1.5px solid var(--accent2)}
+  .badge-charge{font-weight:800; font-size:15px}
+  .approx{color:var(--warn); font-size:12px}
+  .note{font-size:12px; color:var(--muted)}
+  .cmp{
+    text-align:center; font-weight:700; padding:10px; border-radius:10px;
+    background:var(--panel2); border:1px solid var(--line); font-size:14px;
+  }
+  .ielog{display:flex; flex-direction:column; gap:3px; max-height:280px; overflow:auto}
+  .ielog .ie{display:flex; justify-content:space-between; padding:5px 9px; border-radius:7px;
+    background:var(--panel2); font-size:13.5px; font-variant-numeric:tabular-nums}
+  .ielog .ie.jump{background:#3a2a14; border:1px solid var(--accent2); color:#ffe0b0}
+  .ielog .ie .lbl{color:var(--muted)}
+  /* periodic table modal */
+  .modal-bg{
+    position:fixed; inset:0; background:rgba(5,9,18,.78); z-index:100;
+    display:none; align-items:flex-start; justify-content:center; padding:24px 10px; overflow:auto;
+  }
+  .modal-bg.show{display:flex}
+  .modal{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:16px; max-width:980px; width:100%;
+  }
+  .modal h3{margin:0 0 4px}
+  .ptable{
+    display:grid; grid-template-columns:repeat(18, 1fr); gap:3px; margin-top:12px;
+  }
+  .pcell{
+    aspect-ratio:1/1; border-radius:5px; border:1px solid transparent; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-size:11px; font-weight:700; color:#fff; transition:.1s; padding:1px; min-height:34px;
+  }
+  .pcell .z{font-size:8px; font-weight:500; opacity:.85; line-height:1}
+  .pcell:hover{transform:scale(1.12); border-color:#fff; z-index:2; box-shadow:0 2px 10px rgba(0,0,0,.5)}
+  .pcell.disabled{opacity:.18; cursor:not-allowed; pointer-events:none}
+  .pcell.empty{background:transparent; border:none; cursor:default; pointer-events:none}
+  .legend{display:flex; gap:14px; flex-wrap:wrap; margin-top:12px; font-size:12px; color:var(--muted)}
+  .legend span{display:inline-flex; align-items:center; gap:5px}
+  .legend i{width:12px; height:12px; border-radius:3px; display:inline-block}
+  .close-x{float:right; cursor:pointer; font-size:22px; color:var(--muted); line-height:1}
+  .close-x:hover{color:var(--ink)}
+  .hint{font-size:12.5px; color:var(--muted); margin-top:4px}
+  .ghost-key{display:inline-block; width:14px; border-top:2px dashed #8aa0c8; margin-right:4px; vertical-align:middle}
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:9px; overflow:hidden}
+  .seg button{background:var(--panel2); border:none; color:var(--muted); padding:7px 12px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:600}
+  .seg button.on{background:var(--accent); color:#06243a}
+  kbd{background:var(--panel2); border:1px solid var(--line); border-radius:5px; padding:1px 6px; font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚛️ แบบจำลองอะตอม &amp; แนวโน้มในตารางธาตุ</h1>
+  <div class="sub">สื่อจำลองแบบโต้ตอบ — เคมี ม.4 · ระดับพลังงานหลัก · รัศมีอะตอม/ไอออน · พลังงานไอออไนเซชัน (IE) · สัมพรรคภาพอิเล็กตรอน (EA)</div>
+  <div class="tabs" id="tabs"></div>
+</header>
+<main id="app"></main>
+
+<!-- Periodic table picker modal -->
+<div class="modal-bg" id="ptModal">
+  <div class="modal">
+    <span class="close-x" onclick="closePicker()">✕</span>
+    <h3 id="ptTitle">เลือกธาตุจากตารางธาตุ</h3>
+    <div class="note">คาบ 1–7 · ไม่รวมธาตุกลุ่ม f (แลนทาไนด์ Z=58–71 และ แอกทิไนด์ Z=90–103)</div>
+    <div class="ptable" id="ptable"></div>
+    <div class="legend">
+      <span><i style="background:var(--s-block)"></i> หมู่ s (1–2)</span>
+      <span><i style="background:var(--d-block)"></i> หมู่ d (3–12)</span>
+      <span><i style="background:var(--p-block)"></i> หมู่ p (13–17)</span>
+      <span><i style="background:var(--noble)"></i> แก๊สมีตระกูล (18)</span>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   1) ข้อมูลธาตุ (DATA)
+   base: [Z, sym, ชื่อไทย, period, group, รัศมีโคเวเลนต์(pm), IE1(kJ/mol)]
+   ========================================================================= */
+const BASE = [
+ [1,"H","ไฮโดรเจน",1,1,31,1312],[2,"He","ฮีเลียม",1,18,28,2372],
+ [3,"Li","ลิเทียม",2,1,128,520],[4,"Be","เบริลเลียม",2,2,96,899],[5,"B","โบรอน",2,13,84,801],
+ [6,"C","คาร์บอน",2,14,76,1086],[7,"N","ไนโตรเจน",2,15,71,1402],[8,"O","ออกซิเจน",2,16,66,1314],
+ [9,"F","ฟลูออรีน",2,17,57,1681],[10,"Ne","นีออน",2,18,58,2081],
+ [11,"Na","โซเดียม",3,1,166,496],[12,"Mg","แมกนีเซียม",3,2,141,738],[13,"Al","อะลูมิเนียม",3,13,121,578],
+ [14,"Si","ซิลิคอน",3,14,111,786],[15,"P","ฟอสฟอรัส",3,15,107,1012],[16,"S","ซัลเฟอร์",3,16,105,1000],
+ [17,"Cl","คลอรีน",3,17,102,1251],[18,"Ar","อาร์กอน",3,18,106,1521],
+ [19,"K","โพแทสเซียม",4,1,203,419],[20,"Ca","แคลเซียม",4,2,176,590],[21,"Sc","สแคนเดียม",4,3,170,633],
+ [22,"Ti","ไทเทเนียม",4,4,160,659],[23,"V","วาเนเดียม",4,5,153,651],[24,"Cr","โครเมียม",4,6,139,653],
+ [25,"Mn","แมงกานีส",4,7,139,717],[26,"Fe","เหล็ก",4,8,132,762],[27,"Co","โคบอลต์",4,9,126,760],
+ [28,"Ni","นิกเกิล",4,10,124,737],[29,"Cu","ทองแดง",4,11,132,745],[30,"Zn","สังกะสี",4,12,122,906],
+ [31,"Ga","แกลเลียม",4,13,122,579],[32,"Ge","เจอร์เมเนียม",4,14,120,762],[33,"As","อาร์เซนิก",4,15,119,947],
+ [34,"Se","ซีลีเนียม",4,16,120,941],[35,"Br","โบรมีน",4,17,120,1140],[36,"Kr","คริปทอน",4,18,116,1351],
+ [37,"Rb","รูบิเดียม",5,1,220,403],[38,"Sr","สตรอนเชียม",5,2,195,549],[39,"Y","อิตเทรียม",5,3,190,600],
+ [40,"Zr","เซอร์โคเนียม",5,4,175,640],[41,"Nb","ไนโอเบียม",5,5,164,652],[42,"Mo","โมลิบดีนัม",5,6,154,684],
+ [43,"Tc","เทคนีเชียม",5,7,147,702],[44,"Ru","รูทีเนียม",5,8,146,710],[45,"Rh","โรเดียม",5,9,142,720],
+ [46,"Pd","แพลเลเดียม",5,10,139,804],[47,"Ag","เงิน",5,11,145,731],[48,"Cd","แคดเมียม",5,12,144,868],
+ [49,"In","อินเดียม",5,13,142,558],[50,"Sn","ดีบุก",5,14,139,709],[51,"Sb","แอนติโมนี",5,15,139,834],
+ [52,"Te","เทลลูเรียม",5,16,138,869],[53,"I","ไอโอดีน",5,17,139,1008],[54,"Xe","ซีนอน",5,18,140,1170],
+ [55,"Cs","ซีเซียม",6,1,244,376],[56,"Ba","แบเรียม",6,2,215,503],[57,"La","แลนทานัม",6,3,207,538],
+ [72,"Hf","แฮฟเนียม",6,4,175,659],[73,"Ta","แทนทาลัม",6,5,170,761],[74,"W","ทังสเตน",6,6,162,770],
+ [75,"Re","รีเนียม",6,7,151,760],[76,"Os","ออสเมียม",6,8,144,840],[77,"Ir","อิริเดียม",6,9,141,880],
+ [78,"Pt","แพลทินัม",6,10,136,870],[79,"Au","ทองคำ",6,11,136,890],[80,"Hg","ปรอท",6,12,132,1007],
+ [81,"Tl","แทลเลียม",6,13,145,589],[82,"Pb","ตะกั่ว",6,14,146,716],[83,"Bi","บิสมัท",6,15,148,703],
+ [84,"Po","พอโลเนียม",6,16,140,812],[85,"At","แอสทาทีน",6,17,150,899],[86,"Rn","เรดอน",6,18,150,1037],
+ [87,"Fr","แฟรนเซียม",7,1,260,393],[88,"Ra","เรเดียม",7,2,221,509],[89,"Ac","แอกทิเนียม",7,3,215,499],
+ [104,"Rf","รัทเทอร์ฟอร์เดียม",7,4,157,null],[105,"Db","ดุบเนียม",7,5,149,null],[106,"Sg","ซีบอร์เกียม",7,6,143,null],
+ [107,"Bh","โบห์เรียม",7,7,141,null],[108,"Hs","ฮัสเซียม",7,8,134,null],[109,"Mt","ไมต์เนเรียม",7,9,129,null],
+ [110,"Ds","ดาร์มสตัดเทียม",7,10,128,null],[111,"Rg","เรินต์เกเนียม",7,11,121,null],[112,"Cn","โคเปอร์นิเซียม",7,12,122,null],
+ [113,"Nh","นิโฮเนียม",7,13,136,null],[114,"Fl","ฟลีโรเวียม",7,14,143,null],[115,"Mc","มอสโกเวียม",7,15,162,null],
+ [116,"Lv","ลิเวอร์มอเรียม",7,16,175,null],[117,"Ts","เทนเนสซีน",7,17,165,null],[118,"Og","ออกาเนสซอน",7,18,157,null]
+];
+// ธาตุที่รัศมีเป็นค่าประมาณ (คาบ 7 + At/Rn)
+const APPROX_R = new Set([85,86,87,88,89,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118]);
+
+// การจัดเรียงอิเล็กตรอนแบบยกเว้น (ย้าย e จาก orbital หนึ่งไปอีก orbital) : [fromN,fromL, toN,toL, amount]
+const EXC = {
+ 24:[4,0,3,2,1], 29:[4,0,3,2,1],                 // Cr, Cu
+ 41:[5,0,4,2,1], 42:[5,0,4,2,1], 44:[5,0,4,2,1], 45:[5,0,4,2,1], 46:[5,0,4,2,2], 47:[5,0,4,2,1], // Nb Mo Ru Rh Pd Ag
+ 78:[6,0,5,2,1], 79:[6,0,5,2,1], // Pt, Au
+ 57:[4,3,5,2,1], 89:[5,3,6,2,1]  // La, Ac (ไม่มีอิเล็กตรอนใน f)
+};
+
+// พลังงานไอออไนเซชันลำดับต่าง ๆ IE1..IEn (kJ/mol)
+const IES = {
+ He:[2372,5251], Li:[520,7298,11815], Be:[899,1757,14849,21007], B:[801,2427,3660,25026,32827],
+ C:[1086,2353,4620,6223,37831,47277], N:[1402,2856,4578,7475,9445,53267,64360],
+ O:[1314,3388,5301,7469,10990,13327,71337,84080], F:[1681,3374,6050,8408,11023,15164,17868,92038,106435],
+ Ne:[2081,3952,6122,9371,12177,15238,19999,23070,115380],
+ Na:[496,4562,6910,9543,13354,16613,20117,25496,28932,141362],
+ Mg:[738,1451,7733,10540,13630,18020,21711,25661,31653,35458],
+ Al:[578,1817,2745,11577,14842,18379,23326,27465,31853,38473],
+ Si:[786,1577,3232,4356,16091,19805,23780,29287,33878,38726],
+ P:[1012,1907,2914,4964,6274,21267,25431,29872], S:[1000,2252,3357,4556,7004,8496,27107,31719],
+ Cl:[1251,2298,3822,5158,6542,9362,11018,33604], Ar:[1521,2666,3931,5771,7238,8781,11995,13842],
+ K:[419,3052,4420,5877,7975,9590,11343], Ca:[590,1145,4912,6491,8153,10496],
+ Ga:[579,1979,2963,6180], Ge:[762,1537,3302,4411,9020], As:[947,1798,2735,4837,6043,12310],
+ Se:[941,2045,2974,4144,6590,7880], Br:[1140,2100,3470,4560], Kr:[1351,2350,3565,5070],
+ Sc:[633,1235,2389,7091], Ti:[659,1310,2653,4175,9581], V:[651,1414,2830,4507,6299],
+ Cr:[653,1591,2987,4743], Mn:[717,1509,3248,4940], Fe:[762,1562,2957,5290],
+ Co:[760,1648,3232,4950], Ni:[737,1753,3395,5300], Cu:[745,1958,3555], Zn:[906,1733,3833,5731],
+ Rb:[403,2633,3860], Sr:[549,1064,4138]
+};
+
+// สัมพรรคภาพอิเล็กตรอน EA (kJ/mol, ค่าบวก = คายพลังงาน/ชอบรับ e)
+const EA = {
+ H:73,Li:60,B:27,C:122,O:141,F:328,Na:53,Al:42,Si:134,P:72,S:200,Cl:349,
+ K:48,Ca:2,Sc:18,Ti:8,V:51,Cr:65,Fe:15,Co:64,Ni:112,Cu:119,Ga:41,Ge:119,As:78,Se:195,Br:325,
+ Rb:47,Sr:5,Y:30,Nb:86,Mo:72,Tc:53,Ru:101,Rh:110,Pd:54,Ag:126,In:39,Sn:107,Sb:101,Te:190,I:295,
+ Cs:46,Ba:14,W:79,Os:104,Ir:151,Pt:205,Au:223,Tl:36,Pb:35,Bi:91,Po:183,At:233
+};
+
+// รัศมีไอออนจริง (Shannon, 6-coordinate, pm) — ใช้ยึดค่าจริงและเทียบกับแบบจำลอง
+const ION = {
+ Li:{1:76}, Be:{2:45}, B:{3:27}, C:{4:16}, N:{"-3":146,5:13}, O:{"-2":140}, F:{"-1":133},
+ Na:{1:102}, Mg:{2:72}, Al:{3:54}, Si:{4:40}, P:{"-3":212,5:38}, S:{"-2":184,6:29}, Cl:{"-1":181,7:27},
+ K:{1:138}, Ca:{2:100}, Sc:{3:75}, Ti:{4:61}, V:{3:64}, Cr:{3:62}, Mn:{2:83}, Fe:{2:78,3:65},
+ Co:{2:75}, Ni:{2:69}, Cu:{1:77,2:73}, Zn:{2:74}, Ga:{3:62}, Ge:{4:53}, As:{3:58}, Se:{"-2":198}, Br:{"-1":196},
+ Rb:{1:152}, Sr:{2:118}, Y:{3:90}, Zr:{4:72}, Nb:{5:64}, Mo:{6:59}, Ag:{1:115}, Cd:{2:95},
+ In:{3:80}, Sn:{2:118,4:69}, Sb:{3:76}, Te:{"-2":221}, I:{"-1":220},
+ Cs:{1:167}, Ba:{2:135}, La:{3:103}, Hf:{4:71}, Hg:{2:102}, Tl:{1:150,3:89}, Pb:{2:119,4:78}, Bi:{3:103},
+ Fr:{1:180}, Ra:{2:148}, Ac:{3:112}
+};
+
+// ไอออนสามัญของแต่ละธาตุ (ใช้เป็นจุดยึด/ค่าตั้งต้น)
+const COMMON = {
+ Li:1,Be:2,B:3,N:-3,O:-2,F:-1, Na:1,Mg:2,Al:3,P:-3,S:-2,Cl:-1,
+ K:1,Ca:2,Sc:3,Ti:4,V:3,Cr:3,Mn:2,Fe:3,Co:2,Ni:2,Cu:2,Zn:2,Ga:3,Ge:4,As:3,Se:-2,Br:-1,
+ Rb:1,Sr:2,Y:3,Zr:4,Nb:5,Mo:6,Ag:1,Cd:2,In:3,Sn:2,Sb:3,Te:-2,I:-1,
+ Cs:1,Ba:2,La:3,Hf:4,Hg:2,Tl:1,Pb:2,Bi:3,Fr:1,Ra:2,Ac:3
+};
+
+/* ---- สร้าง map ---- */
+const ELS = {};      // sym -> element
+const BYZ = {};      // Z -> element
+BASE.forEach(r=>{
+  const e={Z:r[0],sym:r[1],th:r[2],period:r[3],group:r[4],radius:r[5],ie1:r[6]};
+  ELS[e.sym]=e; BYZ[e.Z]=e;
+});
+
+/* =========================================================================
+   2) เครื่องยนต์อะตอม — การจัดเรียงอิเล็กตรอน / รัศมี (Slater)
+   ========================================================================= */
+const AUFBAU = [[1,0],[2,0],[2,1],[3,0],[3,1],[4,0],[3,2],[4,1],[5,0],[4,2],[5,1],
+  [6,0],[4,3],[5,2],[6,1],[7,0],[5,3],[6,2],[7,1]];
+const CAP=l=>[2,6,10,14][l];
+const Lname=["s","p","d","f"];
+
+// การจัดเรียงพื้นฐานของอะตอมเป็นกลาง -> array ของ {n,l,count}
+function neutralConfig(Z){
+  let e=Z; const cfg=[];
+  for(const [n,l] of AUFBAU){ if(e<=0) break; const c=Math.min(CAP(l),e); cfg.push({n,l,count:c}); e-=c; }
+  if(EXC[Z]){
+    const [fn,fl,tn,tl,amt]=EXC[Z];
+    const from=cfg.find(o=>o.n===fn&&o.l===fl);
+    let to=cfg.find(o=>o.n===tn&&o.l===tl);
+    if(from){ from.count-=amt; if(!to){ to={n:tn,l:tl,count:0}; cfg.push(to);} to.count+=amt;
+      if(from.count<=0) cfg.splice(cfg.indexOf(from),1); }
+  }
+  return cfg.filter(o=>o.count>0);
+}
+
+// config ของไอออน: charge>0 ดึงออก, charge<0 เติม
+function ionConfig(Z, charge){
+  let cfg = neutralConfig(Z).map(o=>({...o}));
+  let q = charge;
+  if(q>0){ // ดึงอิเล็กตรอนวงนอกสุดออก (n สูงสุดก่อน, ภายใน n เดียวกันเอา l สูงก่อน)
+    while(q>0){
+      let best=null;
+      for(const o of cfg){ if(o.count<=0) continue;
+        if(!best || o.n>best.n || (o.n===best.n && o.l>best.l)) best=o; }
+      if(!best) break;
+      best.count--; q--;
+    }
+    cfg=cfg.filter(o=>o.count>0);
+  } else if(q<0){ // เติมตามลำดับ Aufbau
+    let add=-q;
+    while(add>0){
+      let placed=false;
+      for(const [n,l] of AUFBAU){
+        let o=cfg.find(x=>x.n===n&&x.l===l);
+        const cur=o?o.count:0;
+        if(cur<CAP(l)){ if(!o){o={n,l,count:0}; cfg.push(o);} o.count++; add--; placed=true; break; }
+      }
+      if(!placed) break;
+    }
+  }
+  return cfg.sort((a,b)=> a.n-b.n || a.l-b.l ).filter(o=>o.count>0);
+}
+
+// จำนวนอิเล็กตรอนต่อระดับพลังงานหลัก (index0 = n1)
+function shellCounts(cfg){
+  const sh=[];
+  for(const o of cfg){ sh[o.n-1]=(sh[o.n-1]||0)+o.count; }
+  for(let i=0;i<sh.length;i++) if(!sh[i]) sh[i]=0;
+  // ตัด n บนสุดที่เป็น 0 ทิ้ง
+  while(sh.length && sh[sh.length-1]===0) sh.pop();
+  return sh;
+}
+
+// ลำดับกลุ่มของ Slater
+const SEQ=['1sp','2sp','3sp','3d','4sp','4d','4f','5sp','5d','5f','6sp','6d','7sp'];
+const orderIdx=(n,t)=>{const i=SEQ.indexOf(n+t); return i<0?99:i;};
+const NSTAR={1:1,2:2,3:3,4:3.7,5:4.0,6:4.2,7:4.3};
+
+// คำนวณ Z_eff และ n* ของอิเล็กตรอนวงนอกสุด (Slater's rules)
+function slaterOuter(Z,cfg){
+  const groups={};
+  for(const o of cfg){ const t=o.l<=1?'sp':(o.l===2?'d':'f'); const k=o.n+t;
+    if(!groups[k]) groups[k]={n:o.n,t,count:0}; groups[k].count+=o.count; }
+  const arr=Object.values(groups);
+  if(!arr.length) return {Zeff:Z, nstar:1, nOut:1};
+  let G=arr[0];
+  for(const g of arr) if(orderIdx(g.n,g.t)>orderIdx(G.n,G.t)) G=g;
+  let S=0;
+  for(const g of arr){
+    if(g===G){ S+=(g.count-1)*((G.n===1&&G.t==='sp')?0.30:0.35); }
+    else if(G.t==='sp'){
+      if(g.n===G.n-1) S+=g.count*0.85;
+      else if(g.n<G.n-1) S+=g.count*1.0;
+    } else {
+      if(orderIdx(g.n,g.t)<orderIdx(G.n,G.t)) S+=g.count*1.0;
+    }
+  }
+  return {Zeff:Math.max(Z-S,0.5), nstar:NSTAR[G.n]||4.3, nOut:G.n};
+}
+
+// ค่าจากแบบจำลอง (สัดส่วน) ~ n*^2 / Z_eff
+function modelM(Z, charge){
+  const {Zeff,nstar}=slaterOuter(Z, ionConfig(Z,charge));
+  return (nstar*nstar)/Zeff;
+}
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+
+// จุดยึดรัศมี (charge -> รัศมีจริง pm): อะตอมเป็นกลาง(โคเวเลนต์) + ไอออน Shannon
+function anchorsFor(Z){
+  const e=BYZ[Z]; const list=[{q:0,r:e.radius}];
+  const ions=ION[e.sym];
+  if(ions) for(const k in ions) list.push({q:parseInt(k,10), r:ions[k]});
+  return list.sort((a,b)=>a.q-b.q);
+}
+
+// รัศมีของไอออน (pm) + ว่าเป็นค่าจริงหรือประมาณ
+function ionRadius(Z, charge){
+  const A=anchorsFor(Z);
+  const exact=A.find(a=>a.q===charge);
+  if(exact) return {r:exact.r, real:true};
+  let lo=null,hi=null;
+  for(const a of A){ if(a.q<=charge && (!lo||a.q>lo.q)) lo=a; if(a.q>=charge && (!hi||a.q<hi.q)) hi=a; }
+  let r;
+  if(lo&&hi){
+    const ml=Math.log(modelM(Z,lo.q)), mh=Math.log(modelM(Z,hi.q)), mq=Math.log(modelM(Z,charge));
+    const f=(mq-ml)/(mh-ml||1); r=lo.r*Math.pow(hi.r/lo.r, f);
+  } else {
+    const base=lo||hi;
+    const others=A.filter(a=>a!==base);
+    if(others.length){
+      others.sort((a,b)=>Math.abs(a.q-charge)-Math.abs(b.q-charge));
+      const ref=others[0];
+      let p=Math.log(base.r/ref.r)/Math.log(modelM(Z,base.q)/modelM(Z,ref.q));
+      p=clamp(p,0.05,6);
+      const Acoef=base.r/Math.pow(modelM(Z,base.q),p);
+      r=Acoef*Math.pow(modelM(Z,charge),p);
+    } else {
+      r=base.r*(modelM(Z,charge)/modelM(Z,base.q));
+    }
+  }
+  return {r:Math.round(r), real:false};
+}
+
+// IE ลำดับที่ k (1-based) ของธาตุ; null ถ้าไม่มีข้อมูล
+function ieOf(sym,k){
+  const arr=IES[sym]; if(arr&&arr[k-1]!=null) return arr[k-1];
+  if(k===1 && ELS[sym].ie1!=null) return ELS[sym].ie1;
+  return null;
+}
+// จำนวนเวเลนซ์อิเล็กตรอน (อิเล็กตรอนในระดับพลังงานหลักวงนอกสุด)
+function valenceCount(Z){ const sh=shellCounts(neutralConfig(Z)); return sh[sh.length-1]; }
+
+/* =========================================================================
+   3) การวาดอะตอม (SVG) + ตารางธาตุ
+   ========================================================================= */
+const SHELL_LETTER=["K","L","M","N","O","P","Q"];
+const SUP={'-':'⁻','+':'⁺',0:'⁰',1:'¹',2:'²',3:'³',4:'⁴',5:'⁵',6:'⁶',7:'⁷',8:'⁸',9:'⁹'};
+function chargeSup(q){
+  if(q===0) return "";
+  const n=Math.abs(q); const sign=q>0?'+':'-';
+  const digits = n===1? '' : String(n).split('').map(d=>SUP[d]).join('');
+  return digits + SUP[sign];
+}
+function ionLabel(Z,q){ return BYZ[Z].sym + chargeSup(q); }
+
+// วาดอะตอม/ไอออนเป็น SVG  (opts: Z, charge, pxPerPm, ghostPm)
+function atomSVG(Z, charge, pxPerPm, ghostPm){
+  const cx=180, cy=180, nucR=20;
+  const cfg=ionConfig(Z,charge);
+  const shells=shellCounts(cfg);
+  const rad=ionRadius(Z,charge);
+  const maxDraw=152;
+  let pxR=rad.r*pxPerPm;
+  pxR=clamp(pxR, nucR+26, maxDraw);
+  const nShell=shells.length;
+  let s='<svg class="atom" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg">';
+  // ghost (รัศมีอะตอมเดิม)
+  if(ghostPm){
+    let gpx=clamp(ghostPm*pxPerPm, nucR+26, maxDraw);
+    s+=`<circle cx="${cx}" cy="${cy}" r="${gpx.toFixed(1)}" fill="none" stroke="#8aa0c8" stroke-width="1.4" stroke-dasharray="5 5" opacity="0.6"/>`;
+  }
+  // วงรัศมีไอออน/อะตอม
+  s+=`<circle cx="${cx}" cy="${cy}" r="${pxR.toFixed(1)}" fill="rgba(79,195,247,0.05)" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="2 4"/>`;
+  // shells + electrons
+  for(let i=0;i<nShell;i++){
+    const n=i+1, cnt=shells[i];
+    const rr = nucR + (pxR-nucR)*((i+1)/nShell);
+    const isVal=(i===nShell-1);
+    s+=`<circle cx="${cx}" cy="${cy}" r="${rr.toFixed(1)}" fill="none" stroke="${isVal?'var(--accent2)':'var(--shellc)'}" stroke-width="${isVal?1.8:1.2}"/>`;
+    // electrons
+    const dotR = cnt>18?2.4: cnt>10?3:4.2;
+    const start=-Math.PI/2 + (i*0.5);
+    for(let k=0;k<cnt;k++){
+      const ang=start + k*2*Math.PI/cnt;
+      const ex=cx+rr*Math.cos(ang), ey=cy+rr*Math.sin(ang);
+      s+=`<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="${dotR}" fill="${isVal?'var(--accent2)':'#7fd4ff'}"/>`;
+    }
+    // ป้ายจำนวนใกล้แกนบน
+    const lx=cx, ly=cy-rr-3;
+    s+=`<text x="${lx}" y="${ly.toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${isVal?'var(--accent2)':'#9fc7e8'}">${cnt}</text>`;
+  }
+  // nucleus
+  s+=`<circle cx="${cx}" cy="${cy}" r="${nucR}" fill="var(--nucleus)"/>`;
+  s+=`<text x="${cx}" y="${cy-2}" text-anchor="middle" font-size="14" font-weight="800" fill="#3a0f00">+${Z}</text>`;
+  s+=`<text x="${cx}" y="${cy+11}" text-anchor="middle" font-size="8.5" fill="#5a1a00">protons</text>`;
+  s+='</svg>';
+  return {svg:s, shells, rad, cfg};
+}
+
+// แผงข้อมูลของอะตอม/ไอออน
+function dataPanel(Z, charge, opts){
+  opts=opts||{};
+  const e=BYZ[Z]; const eCount=Z-charge;
+  const {shells,rad,cfg}=peek(Z,charge);
+  let html=`<table class="datatable"><tbody>`;
+  html+=`<tr><td>สัญลักษณ์</td><td>${ionLabel(Z,charge)} <span class="note">(${e.th})</span></td></tr>`;
+  html+=`<tr><td>เลขอะตอม Z (ประจุนิวเคลียส)</td><td>+${Z}</td></tr>`;
+  html+=`<tr><td>จำนวนอิเล็กตรอน</td><td>${eCount}</td></tr>`;
+  if(charge!==0) html+=`<tr><td>ประจุไอออน</td><td class="badge-charge" style="color:${charge>0?'var(--pos)':'var(--neg)'}">${charge>0?'+':''}${charge}</td></tr>`;
+  const rlabel = charge===0?'รัศมีอะตอม':'รัศมีไอออน';
+  html+=`<tr><td>${rlabel}</td><td>${rad.r} pm ${rad.real?'':'<span class="approx">≈ ประมาณ</span>'}</td></tr>`;
+  if(APPROX_R.has(Z)&&charge===0) html+=`<tr><td></td><td><span class="approx">รัศมีอะตอมเป็นค่าประมาณ</span></td></tr>`;
+  if(opts.showIE1 && e.ie1!=null) html+=`<tr><td>IE₁</td><td>${e.ie1.toLocaleString()} kJ/mol</td></tr>`;
+  if(opts.showEA){ const ea=EA[e.sym]; html+=`<tr><td>EA (สัมพรรคภาพอิเล็กตรอน)</td><td>${ea!=null? ea+' kJ/mol' : '—'}</td></tr>`; }
+  html+=`</tbody></table>`;
+  // ระดับพลังงานหลัก
+  html+=`<div class="shelllist" style="margin-top:8px">`;
+  for(let i=shells.length-1;i>=0;i--){
+    const isVal=(i===shells.length-1);
+    html+=`<div class="shellrow ${isVal?'valence':''}">
+      <span>ระดับ n=${i+1} <span class="note">(${SHELL_LETTER[i]})</span>${isVal?' · วงนอกสุด':''}</span>
+      <b>${shells[i]} e⁻</b></div>`;
+  }
+  html+=`</div>`;
+  return html;
+}
+// คำนวณ shells/rad/cfg โดยไม่วาด
+function peek(Z,charge){
+  const cfg=ionConfig(Z,charge);
+  return {shells:shellCounts(cfg), rad:ionRadius(Z,charge), cfg};
+}
+
+/* ---------- ตารางธาตุ picker ---------- */
+let pickerCB=null;
+function blockColor(g){ if(g<=2) return 'var(--s-block)'; if(g===18) return 'var(--noble)'; if(g>=13) return 'var(--p-block)'; return 'var(--d-block)'; }
+function buildPtable(){
+  const grid=document.getElementById('ptable');
+  let html='';
+  for(let p=1;p<=7;p++){
+    for(let g=1;g<=18;g++){
+      // หา element ที่ (period,group) นี้
+      const e=BASE.find(r=>r[3]===p&&r[4]===g);
+      if(!e){ html+=`<div class="pcell empty"></div>`; continue; }
+      const Z=e[0], sym=e[1];
+      html+=`<div class="pcell" style="background:${blockColor(g)}" data-z="${Z}" title="${e[2]} (Z=${Z})">
+        <span class="z">${Z}</span><span>${sym}</span></div>`;
+    }
+  }
+  grid.innerHTML=html;
+  grid.querySelectorAll('.pcell[data-z]').forEach(c=>{
+    c.onclick=()=>{ const Z=parseInt(c.dataset.z,10); if(pickerCB){pickerCB(Z);} closePicker(); };
+  });
+}
+function openPicker(title, cb, filter){
+  pickerCB=cb;
+  document.getElementById('ptTitle').textContent=title||'เลือกธาตุจากตารางธาตุ';
+  // filter: function(Z)->bool ; disable ตัวที่ไม่ผ่าน
+  document.querySelectorAll('#ptable .pcell[data-z]').forEach(c=>{
+    const Z=parseInt(c.dataset.z,10);
+    c.classList.toggle('disabled', filter? !filter(Z) : false);
+  });
+  document.getElementById('ptModal').classList.add('show');
+}
+function closePicker(){ document.getElementById('ptModal').classList.remove('show'); pickerCB=null; }
+document.getElementById('ptModal').addEventListener('click',e=>{ if(e.target.id==='ptModal') closePicker(); });
+
+/* =========================================================================
+   4) กิจกรรมทั้ง 5
+   ========================================================================= */
+const state={
+  act:1,
+  a1:{a:11,b:17},          // เปรียบเทียบรัศมีอะตอม 2 ธาตุ (Na, Cl)
+  a2:{Z:11, charge:0},     // สร้างไอออน + ขนาดเปลี่ยน
+  a3:{a:11,b:17, ra:0, rb:0}, // ดึงเวเลนซ์ + IE เปรียบเทียบ 2 ธาตุ
+  a4:{Z:12, removed:0},    // IE ลำดับ + ไอออนเล็กลง (Mg)
+  a5:{a:8, b:9, ca:-2, cb:-1} // ไอออนลบ 2 ตัว (O²⁻, F⁻)
+};
+
+const TABS=[
+  {id:1,name:"1 · เทียบรัศมีอะตอม"},
+  {id:2,name:"2 · สร้างไอออน & ขนาด"},
+  {id:3,name:"3 · ดึงเวเลนซ์ & IE"},
+  {id:4,name:"4 · IE ลำดับที่ 1,2,3…"},
+  {id:5,name:"5 · ไอออนลบ & EA"}
+];
+function renderTabs(){
+  document.getElementById('tabs').innerHTML=TABS.map(t=>
+    `<div class="tab ${state.act===t.id?'active':''}" onclick="setAct(${t.id})">${t.name}</div>`).join('');
+}
+function setAct(id){ state.act=id; renderTabs(); render(); }
+
+/* ----- ตัวช่วย scale ร่วมสำหรับ 2 อะตอม ----- */
+function pairScale(...radii){ const mx=Math.max(...radii); return 152/mx; }
+
+/* ---------- กิจกรรม 1 ---------- */
+function renderA1(){
+  const A=state.a1; const ea=BYZ[A.a], eb=BYZ[A.b];
+  const ra=ionRadius(A.a,0).r, rb=ionRadius(A.b,0).r;
+  const sc=pairScale(ra,rb);
+  const slot=(Z,which)=>{
+    const r=ionRadius(Z,0).r; const g=atomSVG(Z,0,sc);
+    return `<div class="card"><h3>${BYZ[Z].th} <span class="pill">${BYZ[Z].sym}</span>
+        <button class="btn sm" onclick="pick1('${which}')">เปลี่ยนธาตุ</button></h3>
+      <div class="atomwrap">${g.svg}</div>
+      ${dataPanel(Z,0,{showIE1:false})}</div>`;
+  };
+  const bigger = ra>rb? ea: (rb>ra? eb: null);
+  let cmp;
+  if(bigger){ const sm=bigger===ea?eb:ea;
+    cmp=`<b style="color:var(--accent2)">${bigger.th} (${bigger.sym})</b> มีรัศมีอะตอมใหญ่กว่า <b>${sm.th} (${sm.sym})</b> — ${ra} pm เทียบ ${rb} pm`;
+  } else cmp=`ทั้งสองธาตุมีรัศมีใกล้เคียงกัน (${ra} pm)`;
+  const same = ea.period===eb.period? "อยู่คาบเดียวกัน → ข้ามคาบไปทางขวา เลขอะตอม(ประจุนิวเคลียส)เพิ่ม ดึงอิเล็กตรอนแน่นขึ้น รัศมีจึงเล็กลง"
+            : ea.group===eb.group? "อยู่หมู่เดียวกัน → ลงล่าง มีระดับพลังงานหลักเพิ่ม รัศมีจึงใหญ่ขึ้น"
+            : "เปรียบเทียบทั้งจำนวนระดับพลังงานหลักและประจุนิวเคลียส";
+  return `
+   <div class="activity-desc">เลือกธาตุครั้งละ 2 ธาตุ (คาบ 1–7, ไม่รวม f) เพื่อ <b>เปรียบเทียบรัศมีอะตอม</b>
+     ดูจำนวนอิเล็กตรอนในแต่ละระดับพลังงานหลัก และประจุบวกในนิวเคลียส (+Z) วงประสีฟ้า = ขอบเขตรัศมีอะตอม (วาดตามมาตราส่วนเดียวกันทั้งคู่)</div>
+   <div class="stage two-col">${slot(A.a,'a')}${slot(A.b,'b')}</div>
+   <div class="cmp" style="margin-top:14px">📏 ${cmp}<div class="note" style="margin-top:6px">${same}</div></div>`;
+}
+function pick1(which){ openPicker("เลือกธาตุช่องที่ "+(which==='a'?'1':'2'), Z=>{ state.a1[which]=Z; render(); }); }
+
+/* ---------- กิจกรรม 2 ---------- */
+function renderA2(){
+  const S=state.a2; const e=BYZ[S.Z];
+  const neutralR=ionRadius(S.Z,0).r;
+  const sc=152/neutralR;
+  const g=atomSVG(S.Z,S.charge,sc, S.charge!==0?neutralR:0);
+  const eCount=S.Z-S.charge;
+  // ขอบเขตประจุ: ดึงได้จนเหลือ 1 อิเล็กตรอน, เติมได้จนเต็มออกเตตของวงปัจจุบัน (สูงสุด +? / -? เชิงปฏิบัติ)
+  const canCat = eCount>1 && S.charge< Math.min(S.Z-1, 8);
+  const canAn  = S.charge> -4 && eCount < S.Z+5;
+  const rInfo=ionRadius(S.Z,S.charge);
+  const diff = rInfo.r-neutralR;
+  let trend;
+  if(S.charge>0) trend=`ไอออนบวก: ดึงอิเล็กตรอนออก → แรงดึงต่ออิเล็กตรอนที่เหลือมากขึ้น และอาจลดระดับพลังงานหลัก → <b style="color:var(--pos)">ไอออนเล็กลง</b>`;
+  else if(S.charge<0) trend=`ไอออนลบ: เติมอิเล็กตรอน → แรงผลักระหว่างอิเล็กตรอนมากขึ้น → <b style="color:var(--neg)">ไอออนใหญ่ขึ้น</b>`;
+  else trend=`อะตอมเป็นกลาง (ยังไม่มีประจุ) — กดปุ่มเพื่อสร้างไอออน`;
+  // จุดสังเกตการลดระดับพลังงานหลัก
+  const shNow=peek(S.Z,S.charge).shells.length;
+  const shNeu=peek(S.Z,0).shells.length;
+  const collapsed = shNow<shNeu;
+  return `
+   <div class="activity-desc">เลือกธาตุ แล้ว <b>ดึงอิเล็กตรอนวงนอกออกทีละตัว</b> เพื่อสร้างไอออนบวก (ไอออนเล็กลงเรื่อย ๆ)
+     หรือ <b>เติมอิเล็กตรอนทีละตัว</b> เพื่อสร้างไอออนลบ (ไอออนใหญ่ขึ้นเรื่อย ๆ)
+     เส้น<span class="ghost-key"></span>ประสีเทา = รัศมีอะตอมเดิม (เป็นกลาง) ไว้เทียบขนาด</div>
+   <div class="stage two-col">
+     <div class="card"><h3>${e.th} <span class="pill">${ionLabel(S.Z,S.charge)}</span>
+        <button class="btn sm" onclick="pick2()">เปลี่ยนธาตุ</button></h3>
+       <div class="atomwrap">${g.svg}</div>
+       <div class="row" style="justify-content:center">
+         <button class="btn pos" ${canCat?'':'disabled'} onclick="chg2(1)">➖ ดึง e⁻ ออก (ไอออนบวก)</button>
+         <button class="btn neg" ${canAn?'':'disabled'} onclick="chg2(-1)">➕ เติม e⁻ (ไอออนลบ)</button>
+       </div>
+       <div class="row" style="justify-content:center">
+         <button class="btn sm" onclick="reset2()">↺ กลับเป็นอะตอมกลาง</button></div>
+     </div>
+     <div class="card"><h3>ข้อมูล & การเปลี่ยนแปลงขนาด</h3>
+       ${dataPanel(S.Z,S.charge,{})}
+       <div class="cmp">${trend}</div>
+       <table class="datatable"><tbody>
+         <tr><td>รัศมีอะตอมเดิม (กลาง)</td><td>${neutralR} pm</td></tr>
+         <tr><td>รัศมีปัจจุบัน</td><td>${rInfo.r} pm ${rInfo.real?'<span class="note">(ค่าจริง)</span>':'<span class="approx">≈</span>'}</td></tr>
+         <tr><td>ผลต่าง</td><td style="color:${diff<0?'var(--pos)':diff>0?'var(--neg)':'inherit'}">${diff>0?'+':''}${diff} pm</td></tr>
+       </tbody></table>
+       ${collapsed?`<div class="cmp" style="background:#3a2a14;border-color:var(--accent2);color:#ffe0b0">⚠️ ลดจำนวนระดับพลังงานหลักจาก ${shNeu} เหลือ ${shNow} ระดับ → ขนาดลดลงมาก</div>`:''}
+     </div>
+   </div>`;
+}
+function pick2(){ openPicker("เลือกธาตุสำหรับสร้างไอออน", Z=>{ state.a2={Z, charge:0}; render(); }); }
+function chg2(d){ const S=state.a2; S.charge+=d; render(); }
+function reset2(){ state.a2.charge=0; render(); }
+
+/* ---------- กิจกรรม 3 ---------- */
+function renderA3(){
+  const A=state.a3;
+  const slot=(Z,which,removed)=>{
+    const e=BYZ[Z]; const val=valenceCount(Z);
+    const neutralR=ionRadius(Z,0).r; const sc=152/neutralR;
+    const g=atomSVG(Z,removed,sc, removed>0?neutralR:0);
+    const canMore = removed<val; // ดึงเฉพาะเวเลนซ์
+    // log IE ที่ดึงไปแล้ว
+    let log='';
+    for(let k=1;k<=removed;k++){
+      const ie=ieOf(e.sym,k);
+      log+=`<div class="ie"><span class="lbl">IE${sub(k)} (ดึง e⁻ วงนอกตัวที่ ${k})</span><b>${ie!=null?ie.toLocaleString()+' kJ/mol':'—'}</b></div>`;
+    }
+    const nextIE = canMore? ieOf(e.sym, removed+1):null;
+    return `<div class="card"><h3>${e.th} <span class="pill">${ionLabel(Z,removed)}</span>
+        <button class="btn sm" onclick="pick3('${which}')">เปลี่ยนธาตุ</button></h3>
+      <div class="atomwrap">${g.svg}</div>
+      ${dataPanel(Z,removed,{showIE1:true})}
+      <div class="note">เวเลนซ์อิเล็กตรอน = <b>${val}</b> ตัว</div>
+      <button class="btn pos" ${canMore?'':'disabled'} onclick="pull3('${which}')">
+        ➖ ดึงเวเลนซ์ออก 1 ตัว ${nextIE!=null?`(ใช้ IE${sub(removed+1)} = ${nextIE.toLocaleString()} kJ/mol)`:''}</button>
+      <button class="btn sm" onclick="reset3('${which}')">↺ คืนค่า</button>
+      ${log?`<div class="ielog">${log}</div>`:''}</div>`;
+  };
+  const ea=BYZ[A.a], eb=BYZ[A.b];
+  const ie1a=ea.ie1, ie1b=eb.ie1;
+  let cmp='';
+  if(ie1a!=null&&ie1b!=null){
+    const hi=ie1a>ie1b?ea:eb, lo=ie1a>ie1b?eb:ea, hiv=Math.max(ie1a,ie1b), lov=Math.min(ie1a,ie1b);
+    cmp=`⚡ <b style="color:var(--accent2)">${hi.th} (${hi.sym})</b> มี IE₁ สูงกว่า = ${hiv.toLocaleString()} kJ/mol
+       (ดึงเวเลนซ์อิเล็กตรอนออกยากกว่า ${lo.th} = ${lov.toLocaleString()} kJ/mol)`;
+  }
+  return `
+   <div class="activity-desc">เลือก 2 ธาตุ เปรียบเทียบ <b>พลังงานไอออไนเซชัน (IE)</b> ที่ใช้ดึงเวเลนซ์อิเล็กตรอน (วงนอกสุด) ให้หลุดจากอะตอม
+     กดดึงทีละตัวเพื่อดูค่า IE₁, IE₂, … ของแต่ละธาตุ</div>
+   <div class="stage two-col">${slot(A.a,'a',A.ra)}${slot(A.b,'b',A.rb)}</div>
+   ${cmp?`<div class="cmp" style="margin-top:14px">${cmp}</div>`:''}`;
+}
+function sub(n){ return String(n).split('').map(d=>'₀₁₂₃₄₅₆₇₈₉'[+d]).join(''); }
+function pick3(which){ openPicker("เลือกธาตุช่องที่ "+(which==='a'?'1':'2'), Z=>{ state.a3[which]=Z; state.a3[which==='a'?'ra':'rb']=0; render(); }); }
+function pull3(which){ const key=which==='a'?'ra':'rb'; const Z=state.a3[which]; if(state.a3[key]<valenceCount(Z)) state.a3[key]++; render(); }
+function reset3(which){ state.a3[which==='a'?'ra':'rb']=0; render(); }
+
+/* ---------- กิจกรรม 4 ---------- */
+function renderA4(){
+  const S=state.a4; const e=BYZ[S.Z];
+  const neutralR=ionRadius(S.Z,0).r; const sc=152/neutralR;
+  const g=atomSVG(S.Z,S.removed,sc, S.removed>0?neutralR:0);
+  const maxRemove=Math.min(S.Z-1, 10);
+  const canMore=S.removed<maxRemove;
+  // สร้าง log IE1..IEremoved พร้อมตรวจ "การกระโดด"
+  // จุดกระโดด = IE ลำดับที่เริ่มดึงอิเล็กตรอนจากระดับพลังงานหลักที่ลึกเข้าไป (n วงนอกก่อนดึงลดลง)
+  let log='';
+  const seriesLen=(IES[e.sym]||[e.ie1]).length;
+  const nMax=Math.max(S.removed, Math.min(seriesLen, maxRemove));
+  const rows=[];
+  for(let k=1;k<=nMax;k++){
+    const ie=ieOf(e.sym,k);
+    const nBefore = peek(S.Z,k-1).shells.length;          // n วงนอกก่อนดึงตัวที่ k
+    const nBeforePrev = k>1? peek(S.Z,k-2).shells.length : nBefore;
+    const jump = (k>1) && (nBefore < nBeforePrev);          // เริ่มเจาะเข้าระดับพลังงานหลักวงในใหม่
+    rows.push({k,ie,jump, done:k<=S.removed});
+  }
+  rows.forEach(r=>{
+    if(!r.done && r.ie==null) return; // ไม่แสดงแถวอนาคตที่ไม่มีข้อมูล
+    const cls = r.jump?'ie jump':'ie';
+    const tag = r.jump? ' 🔺เริ่มดึงอิเล็กตรอนระดับพลังงานชั้นใน (พลังงานกระโดดสูงมาก)':'';
+    log+=`<div class="${cls}" style="${r.done?'':'opacity:.5'}">
+      <span class="lbl">IE${sub(r.k)}${tag}</span>
+      <b>${r.ie!=null?r.ie.toLocaleString()+' kJ/mol':'—'}</b></div>`;
+  });
+  const rInfo=ionRadius(S.Z,S.removed);
+  return `
+   <div class="activity-desc">ธาตุชนิดเดียวกัน — <b>ดึงอิเล็กตรอนวงนอกออกทีละตัว</b> เกิดไอออนบวกที่เล็กลงเรื่อย ๆ
+     พร้อมแสดง <b>พลังงานไอออไนเซชันลำดับที่ 1, 2, 3, …</b> สังเกตว่าเมื่อเริ่มดึงอิเล็กตรอน "ชั้นใน" (ลดระดับพลังงานหลัก) ค่า IE จะ<b>กระโดดสูงมาก</b></div>
+   <div class="stage two-col">
+     <div class="card"><h3>${e.th} <span class="pill">${ionLabel(S.Z,S.removed)}</span>
+        <button class="btn sm" onclick="pick4()">เปลี่ยนธาตุ</button></h3>
+       <div class="atomwrap">${g.svg}</div>
+       <div class="row" style="justify-content:center">
+         <button class="btn pos" ${canMore?'':'disabled'} onclick="pull4(1)">➖ ดึงอิเล็กตรอน 1 ตัว</button>
+         <button class="btn sm" onclick="pull4(-1)" ${S.removed>0?'':'disabled'}>↩︎ คืน 1 ตัว</button>
+         <button class="btn sm" onclick="reset4()">↺ เริ่มใหม่</button>
+       </div>
+       <table class="datatable"><tbody>
+         <tr><td>รัศมีอะตอมเดิม</td><td>${neutralR} pm</td></tr>
+         <tr><td>รัศมีไอออนปัจจุบัน</td><td>${rInfo.r} pm</td></tr>
+         <tr><td>ดึงออกแล้ว</td><td>${S.removed} e⁻</td></tr>
+       </tbody></table>
+     </div>
+     <div class="card"><h3>พลังงานไอออไนเซชันลำดับต่าง ๆ</h3>
+       ${dataPanel(S.Z,S.removed,{})}
+       <div class="ielog">${log||'<div class="note">ไม่มีข้อมูล IE</div>'}</div>
+       <div class="note">แถบสีส้ม = จุดที่ดึงอิเล็กตรอนชั้นใน(วงถัดเข้าไป) ทำให้ค่า IE เพิ่มขึ้นอย่างก้าวกระโดด — เป็นหลักฐานของการจัดเรียงอิเล็กตรอนเป็นระดับพลังงาน</div>
+     </div>
+   </div>`;
+}
+function pick4(){ openPicker("เลือกธาตุสำหรับดูIEลำดับต่างๆ", Z=>{ state.a4={Z, removed:0}; render(); }); }
+function pull4(d){ const S=state.a4; S.removed=clamp(S.removed+d,0,Math.min(S.Z-1,10)); render(); }
+function reset4(){ state.a4.removed=0; render(); }
+
+/* ---------- กิจกรรม 5 ---------- */
+function defaultAnion(Z){ const e=BYZ[Z]; const c=COMMON[e.sym];
+  if(c!=null && c<0) return c;
+  if(e.group===17) return -1; if(e.group===16) return -2; if(e.group===15) return -3;
+  return -1;
+}
+function renderA5(){
+  const A=state.a5;
+  const ra=ionRadius(A.a,A.ca).r, rb=ionRadius(A.b,A.cb).r;
+  const sc=pairScale(ra,rb);
+  const slot=(Z,charge,which)=>{
+    const e=BYZ[Z]; const g=atomSVG(Z,charge,sc);
+    const ea=EA[e.sym];
+    // ดึง e ออกจากไอออนลบ -> charge เพิ่ม (เข้าใกล้ 0)
+    const canPull = charge<0;
+    // พลังงานที่ใช้ดึง e ตัวนอกสุดของไอออนลบ X^- -> X : = EA(X)
+    const pullEnergy = (charge===-1 && ea!=null)? `EA = ${ea} kJ/mol` :
+                       (charge<-1? 'ดึงจากไอออนลบหลายประจุ (พลังงานสูง)':'—');
+    return `<div class="card"><h3>${e.th} <span class="pill">${ionLabel(Z,charge)}</span>
+        <button class="btn sm" onclick="pick5('${which}')">เปลี่ยนไอออน</button></h3>
+      <div class="atomwrap">${g.svg}</div>
+      ${dataPanel(Z,charge,{showEA:true})}
+      <div class="cmp" style="font-size:13px">ดึง e⁻ วงนอกออก 1 ตัว ใช้พลังงาน: <b style="color:var(--accent2)">${pullEnergy}</b>
+        <div class="note" style="margin-top:4px">X⁻ → X + e⁻ ใช้พลังงานเท่ากับ EA ของธาตุนั้น (พลังงานที่ปล่อยตอนรับ e⁻ = พลังงานที่ต้องใช้ตอนดึงกลับ)</div></div>
+      <button class="btn pos" ${canPull?'':'disabled'} onclick="pull5('${which}')">➖ ดึง e⁻ ออก 1 ตัว</button>
+      <button class="btn sm" onclick="reset5('${which}')">↺ คืนค่าไอออนลบเดิม</button></div>`;
+  };
+  const ea=BYZ[A.a], eb=BYZ[A.b];
+  const bigger= ra>rb?ea:(rb>ra?eb:null);
+  let cmp= bigger? `<b style="color:var(--accent2)">${ionLabel(bigger.Z, bigger===ea?A.ca:A.cb)}</b> มีขนาดไอออนใหญ่กว่า (${Math.max(ra,rb)} pm เทียบ ${Math.min(ra,rb)} pm)`
+                 : `ไอออนทั้งสองขนาดใกล้เคียงกัน`;
+  return `
+   <div class="activity-desc">เลือก <b>ไอออนลบ</b> ครั้งละ 2 ตัว เปรียบเทียบขนาดไอออน และดู <b>พลังงาน EA</b> ที่เกี่ยวข้องกับการดึงเวเลนซ์อิเล็กตรอนวงนอกสุดออก
+     (วาดทั้งสองด้วยมาตราส่วนเดียวกัน)</div>
+   <div class="stage two-col">${slot(A.a,A.ca,'a')}${slot(A.b,A.cb,'b')}</div>
+   <div class="cmp" style="margin-top:14px">📏 ${cmp}</div>`;
+}
+function pick5(which){
+  openPicker("เลือกธาตุที่จะทำเป็นไอออนลบ", Z=>{
+    state.a5[which]=Z;
+    state.a5[which==='a'?'ca':'cb']=defaultAnion(Z);
+    render();
+  }, Z=>{ const e=BYZ[Z]; return e.group>=14 && e.group<=17 || e.Z===1; });
+}
+function pull5(which){ const ck=which==='a'?'ca':'cb'; if(state.a5[ck]<0) state.a5[ck]++; render(); }
+function reset5(which){ const zk=which; const Z=state.a5[which]; state.a5[which==='a'?'ca':'cb']=defaultAnion(Z); render(); }
+
+/* ---------- render หลัก ---------- */
+function render(){
+  const app=document.getElementById('app');
+  if(state.act===1) app.innerHTML=renderA1();
+  else if(state.act===2) app.innerHTML=renderA2();
+  else if(state.act===3) app.innerHTML=renderA3();
+  else if(state.act===4) app.innerHTML=renderA4();
+  else if(state.act===5) app.innerHTML=renderA5();
+}
+buildPtable();
+renderTabs();
+render();
+</script>
+</body>
+</html>
