@@ -123,6 +123,9 @@ table.grid td.who{
 .dr{border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin:9px 0}
 .dr .hd{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px;font-size:12px}
 .badge{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px}
+.tag.warn{background:var(--hot-soft);color:var(--hot);font-weight:700}
+.cell.eye{box-shadow:inset 0 0 0 2px var(--hot)}
+.cell .eyem{position:absolute;top:0;left:4px;font-size:10px;font-weight:800;color:var(--hot)}
 .tag{font-size:10.5px;padding:2px 8px;border-radius:20px;background:var(--card-2);color:var(--ink-3);font-weight:600}
 .when{margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--ink-3)}
 .dtext{font-size:13.5px;line-height:1.7;white-space:pre-wrap}
@@ -342,14 +345,16 @@ function renderCollect(){
         const t = cell(r,id);
         if (!t) return `<td><div class="cell">·</div></td>`;
         const lv = lvOf(t), up = t.first_level!=null && t.final_level>t.first_level;
-        return `<td><button class="cell has" data-r="${ri}" data-t="${id}"
-          title="ระดับ ${lv} · แก้ ${t.attempts} ครั้ง"
+        const last = (t.drafts||[]).slice(-1)[0] || {};
+        const needsEye = (last.flags||[]).length || (last.odd||[]).length || last.pasteRatio>=0.6;
+        return `<td><button class="cell has${needsEye?" eye":""}" data-r="${ri}" data-t="${id}"
+          title="ระดับ ${lv} · แก้ ${t.attempts} ครั้ง${needsEye?" · ควรอ่านเอง":""}"
           style="border-color:color-mix(in srgb,${lvVar(lv)} 55%,transparent);
                  background:color-mix(in srgb,${lvVar(lv)} 16%,transparent);color:${lvVar(lv)}">
-          ${lv}${up?'<span class="up">↑</span>':""}${t.submitted?'<span class="dot"></span>':""}</button></td>`;
+          ${lv}${up?'<span class="up">↑</span>':""}${t.submitted?'<span class="dot"></span>':""}${needsEye?'<span class="eyem">!</span>':""}</button></td>`;
       }).join("")}</tr>`).join("")}
     </tbody></table>
-    <div class="note">↑ = ระดับดีขึ้นจากร่างแรก · จุด = นักเรียนกดส่งแล้ว · คลิกช่องเพื่ออ่านทุกร่าง</div>`;
+    <div class="note">↑ = ระดับดีขึ้นจากร่างแรก · จุด = นักเรียนกดส่งแล้ว · <b style="color:var(--hot)">!</b> = ระบบพบสัญญาณที่ครูควรอ่านเอง (ผิดสถานการณ์ สรุปสวนข้อมูล สัญลักษณ์แปลกปลอม หรือวางข้อความมาเป็นส่วนใหญ่) · คลิกช่องเพื่ออ่านทุกร่าง</div>`;
 
   out.innerHTML = `${stats}
     <div style="margin-top:20px"><h2>ภาพรวมรายกิจกรรม</h2><div class="scroll"><table>
@@ -358,10 +363,14 @@ function renderCollect(){
         <th style="text-align:right">แก้เฉลี่ย</th></tr></thead><tbody>${taskRows}</tbody></table></div></div>
     <div style="margin-top:22px"><h2>รายบุคคล</h2><div class="scroll">${grid}</div></div>
     <div class="row"><button class="btn" id="c-csv">บันทึกสรุปเป็นตาราง (CSV)</button>
-      <button class="btn" id="c-clear">ล้างรายการ</button></div>`;
+      <button class="btn" id="c-ai">ส่งออกชุดตรวจสำหรับ AI</button>
+      <button class="btn" id="c-clear">ล้างรายการ</button></div>
+    <div class="note">“ส่งออกชุดตรวจสำหรับ AI” จะได้ไฟล์ข้อความที่มีเกณฑ์ ก พร้อมคำอธิบายของนักเรียนทั้งห้อง
+      นำไปวางในแชต AI ที่ครูใช้อยู่ เพื่อให้ตรวจเชิงความหมาย แล้วนำผลมาเทียบกับระดับที่ระบบให้</div>`;
 
   out.querySelectorAll(".cell.has").forEach(b => b.onclick = () => openDetail(+b.dataset.r, b.dataset.t));
   out.querySelector("#c-csv").onclick = exportCSV;
+  out.querySelector("#c-ai").onclick = exportForAI;
   out.querySelector("#c-clear").onclick = () => { RECORDS = []; renderCollect(); document.getElementById("c-err").innerHTML=""; };
 }
 
@@ -398,6 +407,10 @@ function openDetail(ri, taskId){
       <div class="hd"><b>ร่างที่ ${d.i}</b>
         <span class="badge" style="background:color-mix(in srgb,${lvVar(d.level)} 16%,transparent);color:${lvVar(d.level)}">ระดับ ${d.level} · ${d.pct}%</span>
         ${d.hasLink?'<span class="tag">เชื่อมเหตุผล</span>':""}${d.hasNum?'<span class="tag">อ้างตัวเลข</span>':""}
+        ${(d.flags||[]).includes("frame")?'<span class="tag warn">ผิดสถานการณ์</span>':""}
+        ${(d.flags||[]).includes("dir")?'<span class="tag warn">สรุปสวนข้อมูล</span>':""}
+        ${(d.odd||[]).length?`<span class="tag warn">สัญลักษณ์แปลกปลอม ${d.odd.length} ชนิด</span>`:""}
+        ${d.pasteRatio>=0.6?`<span class="tag warn">วางข้อความ ${Math.round(d.pasteRatio*100)}%</span>`:""}
         <span class="when">${fmtWhen(d.at)} · ${d.chars} ตัวอักษร</span></div>
       <div class="dtext">${esc(d.text) || "<i style='color:var(--ink-3)'>(ว่าง)</i>"}</div>
       ${d.newHits?.length?`<div style="margin-top:6px;font-size:11.5px;color:var(--ink-3)">เพิ่มจากร่างก่อน: ${esc(d.newHits.join(", "))}</div>`:""}
@@ -408,6 +421,78 @@ function openDetail(ri, taskId){
   ov.onclick = e => { if (e.target === ov) ov.remove(); };
   ov.querySelector("#d-close").onclick = () => ov.remove();
   document.body.appendChild(ov);
+}
+
+/* ── ชุดตรวจสำหรับให้ AI ตรวจเชิงความหมาย ──
+   สื่อตรวจด้วยคำสำคัญ จึงตัดสินความถูกต้องเชิงเนื้อหาไม่ได้ทั้งหมด
+   ไฟล์นี้รวมเกณฑ์ + บริบทของกิจกรรม + คำตอบนักเรียน ให้ครูนำไปวางในแชต AI ที่ใช้อยู่ */
+const TASK_CONTEXT = {
+  "1.1":"เปรียบเทียบขนาดอะตอมของธาตุหมู่เดียวกัน ไล่จากบนลงล่าง คำตอบที่ถูกคือขนาดใหญ่ขึ้น เพราะจำนวนระดับพลังงานเพิ่มขึ้น เวเลนซ์อิเล็กตรอนห่างนิวเคลียสมากขึ้นและถูกกำบังมากขึ้น แรงดึงดูดจึงลดลง",
+  "1.2":"เปรียบเทียบขนาดอะตอมของธาตุคาบเดียวกัน ไล่จากซ้ายไปขวา คำตอบที่ถูกคือขนาดเล็กลง เพราะจำนวนระดับพลังงานเท่าเดิมแต่ประจุในนิวเคลียสเพิ่มขึ้น แรงดึงดูดต่อเวเลนซ์อิเล็กตรอนจึงมากขึ้น",
+  "2.1":"เปรียบเทียบขนาดของอะตอมกับไอออนลบที่ประจุลบเพิ่มขึ้น คำตอบที่ถูกคือใหญ่ขึ้น เพราะโปรตอนเท่าเดิมแต่อิเล็กตรอนมากขึ้น แรงผลักระหว่างอิเล็กตรอนเพิ่มขึ้น",
+  "2.2":"เปรียบเทียบขนาดของอะตอมกับไอออนบวกที่ประจุบวกเพิ่มขึ้น คำตอบที่ถูกคือเล็กลง เพราะโปรตอนเท่าเดิมแต่อิเล็กตรอนน้อยลง แรงดึงดูดต่ออิเล็กตรอนที่เหลือมากขึ้น และจะเล็กลงมากเป็นพิเศษเมื่อเสียอิเล็กตรอนหมดหนึ่งระดับพลังงาน",
+  "3.1":"เปรียบเทียบพลังงานไอออไนเซชันลำดับที่ 1 ของธาตุหมู่เดียวกัน ไล่จากบนลงล่าง คำตอบที่ถูกคือค่าลดลง เพราะเวเลนซ์อิเล็กตรอนอยู่ไกลนิวเคลียสและถูกกำบังมากขึ้น ดึงออกง่ายขึ้น",
+  "3.2":"เปรียบเทียบพลังงานไอออไนเซชันลำดับที่ 1, 2, 3, … ของธาตุเดียวกัน คำตอบที่ถูกคือค่าสูงขึ้นเสมอ เพราะไอออนที่เหลือมีประจุบวกมากขึ้น และจะกระโดดสูงผิดปกติเมื่อเริ่มดึงจากระดับพลังงานชั้นในถัดไป ซึ่งใช้บอกจำนวนเวเลนซ์อิเล็กตรอนได้",
+  "4":"เปรียบเทียบสัมพรรคภาพอิเล็กตรอนของธาตุหมู่เดียวกัน ไล่จากบนลงล่าง คำตอบที่ถูกคือค่ามีแนวโน้มลดลง เพราะอิเล็กตรอนที่รับเข้ามาอยู่ไกลนิวเคลียสและถูกกำบังมากขึ้น คายพลังงานได้น้อยลง",
+  "5":"เปรียบเทียบอิเล็กโทรเนกาทิวิตีของธาตุหมู่เดียวกัน ไล่จากบนลงล่าง คำตอบที่ถูกคือค่าลดลง เพราะอะตอมใหญ่ขึ้น นิวเคลียสดึงอิเล็กตรอนคู่ร่วมพันธะได้น้อยลง",
+};
+
+async function exportForAI(){
+  const L = [];
+  L.push("บทบาท: คุณคือผู้ช่วยครูเคมี ม.4 ตรวจ “คำอธิบายทางวิทยาศาสตร์” ของนักเรียน");
+  L.push("");
+  L.push("งานของคุณ: ให้ระดับ 0–3 ตามเกณฑ์ด้านล่างกับคำอธิบายของนักเรียนแต่ละคน");
+  L.push("โดยตัดสินจาก “ความถูกต้องเชิงเนื้อหาและความสมเหตุสมผลของการให้เหตุผล” เป็นหลัก");
+  L.push("ไม่ใช่จากการมีคำสำคัญครบหรือไม่");
+  L.push("");
+  L.push("=== เกณฑ์การให้ระดับ ===");
+  L.push("ระดับ 3 — ระบุหลักการทางวิทยาศาสตร์ที่ถูกต้อง เชื่อมเหตุกับผลชัดเจน และอ้างหลักฐานเชิงตัวเลขประกอบ");
+  L.push("ระดับ 2 — มีหลักการทางวิทยาศาสตร์ที่ถูกต้อง แต่ยังไม่ผูกกับหลักฐานอย่างชัดเจน หรือไม่ยกตัวเลขมาประกอบ");
+  L.push("ระดับ 1 — บอกสิ่งที่สังเกตได้หรือยกตัวเลข แต่ไม่ได้อธิบายว่าเพราะเหตุใด");
+  L.push("ระดับ 0 — ไม่มีคำอธิบาย หรือกล่าวซ้ำข้อสรุปโดยไม่เพิ่มเหตุผล");
+  L.push("");
+  L.push("ข้อกำหนดเพิ่มเติมที่สำคัญมาก:");
+  L.push("• ถ้าคำอธิบายพูดถึงสถานการณ์ผิด (เช่น กิจกรรมเทียบตามหมู่ แต่ตอบว่าตามคาบ) ให้ระดับไม่เกิน 1 และระบุเหตุผล");
+  L.push("• ถ้าสรุปทิศทางสวนกับข้อเท็จจริง ให้ระดับไม่เกิน 1 และระบุเหตุผล");
+  L.push("• ถ้าหลักการที่ยกมาถูกคำแต่ใช้ผิดที่ (เช่น อ้างการกำบังทั้งที่กิจกรรมนั้นการกำบังไม่เปลี่ยน) ให้หักและอธิบาย");
+  L.push("• ถ้าข้อความมีลักษณะคัดลอกมาโดยไม่เข้าใจ (สำนวนไม่สอดคล้องกับระดับ ม.4 หรือมีเนื้อหาเกินบริบท) ให้ตั้งข้อสังเกตไว้");
+  L.push("");
+  L.push("รูปแบบผลลัพธ์ที่ต้องการ: ตารางที่มีคอลัมน์ | เลขที่ | ชื่อ | กิจกรรม | ระดับที่ AI ให้ | ระดับที่ระบบให้ | ตรงกันหรือไม่ | เหตุผลสั้น ๆ |");
+  L.push("แล้วสรุปท้ายตารางว่า แนวคิดใดที่นักเรียนทั้งห้องเข้าใจคลาดเคลื่อนมากที่สุด 3 อันดับแรก");
+  L.push("");
+  L.push("=== ข้อมูลนักเรียน ===");
+
+  let n = 0;
+  for (const r of RECORDS)
+    for (const [id, name] of TASKS){
+      const t = r.tasks?.[id]; if (!t) continue;
+      const last = (t.drafts || []).slice(-1)[0]; if (!last || !String(last.text||"").trim()) continue;
+      n++;
+      L.push("");
+      L.push(`— เลขที่ ${r.student.no} · ${r.student.name} · กิจกรรม ${id} ${name}`);
+      L.push(`  บริบทของกิจกรรม: ${TASK_CONTEXT[id] || "-"}`);
+      L.push(`  ระดับที่ระบบ (ตรวจด้วยคำสำคัญ) ให้: ${last.level}`);
+      if ((last.flags||[]).length) L.push(`  ระบบตั้งข้อสังเกต: ${last.flags.includes("frame")?"อ้างสถานการณ์ผิด ":""}${last.flags.includes("dir")?"สรุปสวนข้อมูล":""}`);
+      if (last.pasteRatio >= 0.6) L.push(`  ระบบบันทึกว่า: ข้อความมาจากการวางประมาณ ${Math.round(last.pasteRatio*100)}%`);
+      L.push(`  จำนวนครั้งที่แก้: ${t.attempts}`);
+      L.push(`  คำอธิบายของนักเรียน: "${String(last.text).replace(/\s+/g," ").trim()}"`);
+    }
+
+  if (!n) return alert("ยังไม่มีคำอธิบายให้ส่งออก");
+  L.push("");
+  L.push(`(รวม ${n} คำอธิบาย จากนักเรียน ${RECORDS.length} คน)`);
+
+  const data = L.join("\n");
+  const stamp = new Date().toISOString().slice(0,10);
+  const filename = `ชุดตรวจสำหรับAI-${stamp}.txt`;
+  try {
+    const dl = window.claude && await window.claude.use("downloads");
+    if (dl){ await dl.save({filename, data}); return; }
+  } catch(e){ if (e && e.code === "declined") return; }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([data], {type:"text/plain;charset=utf-8"}));
+  a.download = filename; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 
 /* ── บันทึกสรุปเป็นตาราง ── */
